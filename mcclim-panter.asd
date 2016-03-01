@@ -23,7 +23,8 @@
 		:serial t	
                 :components
                 ((:file "mcclim-panter")
-		 (:file "commands"))))
+		 (:file "commands")
+		 (:file "frame-mixin"))))
   :description "Debugging utility")
 
 
