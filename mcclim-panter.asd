@@ -18,12 +18,12 @@
   :version "0.1"
   :author "Alessandro Serra"
   :license "GPLv3"
-  :depends-on (:mcclim :cl-panter)
+  :depends-on (:mcclim :clim-listener :cl-panter)
   :components ((:module "mcclim"
 		:serial t	
                 :components
                 ((:file "mcclim-panter")
-		 (:file "frame-mixin"))))
+		 (:file "commands"))))
   :description "Debugging utility")
 
 
