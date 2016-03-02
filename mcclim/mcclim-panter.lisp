@@ -2,7 +2,7 @@
 (defpackage mcclim-panter 
   (:use :cl)
   (:export
-   panter-frame-mixin))
+   :run-panter
+   ))
 
 (in-package :mcclim-panter)
-

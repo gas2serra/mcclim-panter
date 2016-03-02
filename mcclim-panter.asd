@@ -24,7 +24,8 @@
                 :components
                 ((:file "mcclim-panter")
 		 (:file "commands")
-		 (:file "frame-mixin"))))
+		 (:file "frame")
+		 (:file "main"))))
   :description "Debugging utility")
 
 
