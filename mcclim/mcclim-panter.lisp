@@ -6,4 +6,3 @@
 
 (in-package :mcclim-panter)
 
-;; blah blah blah.
