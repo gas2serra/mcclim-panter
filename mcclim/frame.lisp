@@ -3,9 +3,8 @@
 (clim:define-application-frame panter (clim:standard-application-frame)
   ()
   (:panes
-   (app :application)
-   (doc :pointer-documentation)
- 
+   (app :application :display-time nil)
+   (doc :pointer-documentation) 
    (interact :interactor))
   (:command-table
    (panter
