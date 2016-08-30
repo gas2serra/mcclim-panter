@@ -234,16 +234,16 @@ TODO
 	    (clim:with-output-as-presentation (pane stack-frame 'stack-frame)
 	      (bold (pane) (clim:formatting-cell (pane) (format t "~A: " i)))
 	      (clim:formatting-cell (pane)
-		(present stack-frame 'stack-frame 
+		(clim:present stack-frame 'stack-frame 
 			 :view (view stack-frame))))))
     (when (>= (length (backtrace (condition-info pane))) 20)
       (clim:formatting-row (pane)
         (clim:formatting-cell (pane))
         (clim:formatting-cell (pane)
           (bold (pane)
-            (present pane 'more-type)))))))
+            (clim:present pane 'more-type)))))))
 
-(clim:define-presentation-method present (object (type stack-frame) stream
+(clim:define-presentation-method clim:present (object (type stack-frame) stream
 					    (view minimized-stack-frame-view)
 					    &key acceptably for-context-type)
   (declare (ignore acceptably for-context-type))
@@ -253,7 +253,7 @@ TODO
 		(subseq str 0 300)
 		str))))
 
-(clim:define-presentation-method present (object (type stack-frame) stream
+(clim:define-presentation-method clim:present (object (type stack-frame) stream
                      (view maximized-stack-frame-view)
                      &key acceptably for-context-type)
   (declare (ignore acceptably for-context-type))
@@ -271,22 +271,22 @@ TODO
 		(stream)
 	      (clim:formatting-cell (stream) (format t "~A" n))
 	      (clim:formatting-cell (stream) (format t "="))
-	      (clim:formatting-cell (stream) (present val 'inspect)))))
+	      (clim:formatting-cell (stream) (clim:present val 'inspect)))))
     (fresh-line)))
 
-(clim:define-presentation-method present (object (type restart) stream
+(clim:define-presentation-method clim:present (object (type restart) stream
 					    (view clim:textual-view)
 					    &key acceptably for-context-type)
   (declare (ignore acceptably for-context-type))
   (bold (stream) (format t "~A" (restart-name object))))
 
-(clim:define-presentation-method present (object (type more-type) stream
+(clim:define-presentation-method clim:present (object (type more-type) stream
 					    (view clim:textual-view)
 					    &key acceptably for-context-type)
   (declare (ignore acceptably for-context-type))
   (bold (stream) (format t "--- MORE ---")))
 
-(clim:define-presentation-method present (object (type inspect) stream
+(clim:define-presentation-method clim:present (object (type inspect) stream
 					    (view clim:textual-view)
 					    &key acceptably for-context-type)
   (declare (ignore acceptably for-context-type))
