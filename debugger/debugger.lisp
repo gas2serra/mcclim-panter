@@ -30,7 +30,7 @@ TODO
 
 |#
 
-(in-package mcclim-panter)
+(in-package mcclim-panter-debugger)
 
 (defmacro bold ((stream) &body body)
   `(clim:with-text-face (,stream :bold)

@@ -18,23 +18,14 @@
   :version "0.1"
   :author "Alessandro Serra"
   :license "GPLv3"
-  :depends-on (:mcclim :clim-listener :cl-panter :cl-ppcre :anaphora :swank :clouseau)
+  :depends-on (:mcclim :clim-listener :cl-panter :anaphora :clouseau :mcclim-panter-apropos :mcclim-panter-debugger)
   :components ((:module "mcclim"
 			:serial t	
 			:components
 			((:file "mcclim-panter")
 			 (:file "commands")
 			 (:file "frame")
-			 (:file "main")))
-	       (:module "debugger"
-			:serial t
-			:components
-			((:file "debugger")))
-	       (:module "symbol-navigator"
-			:serial t
-			:components
-			((:file "apropos")
-			 (:file "navigator"))))
+			 (:file "main"))))
   :description "Debugging utility")
 
 

@@ -3,7 +3,7 @@
 ;;; Entry point is to use CLIMACS-GUI::COM-NAVIGATOR via M-C-s. Click on symbol
 ;;; values and press the return button to return them.
 
-(in-package :mcclim-panter)
+(in-package :mcclim-panter-apropos)
 
 (defparameter navigator-column-heading-text-style
   (clim:make-text-style

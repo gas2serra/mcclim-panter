@@ -1,4 +1,4 @@
-(in-package :mcclim-panter)
+(in-package :mcclim-panter-apropos)
 
 ;;;
 ;;; Filters
