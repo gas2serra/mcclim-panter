@@ -14,6 +14,7 @@
 
 (clim:define-application-frame navigator ()
   ((navigator-bound-filter :initform nil)
+   (external-only :initform nil)
    (return-values :initform nil))
   (:menu-bar nil)
   (:panes (package-apropos-text-field :text-field
@@ -29,8 +30,8 @@
 	   (clim:with-radio-box (:orientation :horizontal :value-changed-callback 'maybe-update-apropos-display)
 	     (clim:radio-box-current-selection "t")
 	     "nil"))
-	  (include-external-symbols-radio
-	   (clim:with-radio-box (:orientation :horizontal :value-changed-callback 'maybe-update-apropos-display)
+	  (external-only-radio
+	   (clim:with-radio-box (:orientation :horizontal :value-changed-callback 'update-external-only)
 	     "t"
 	     (clim:radio-box-current-selection "nil")))
 	  (include-command-internals-radio
@@ -57,8 +58,8 @@
 	     return-button
 	     (clim:labelling (:label "print fully qualified symbols?")
 	       fully-qualified-symbols-radio)
-	     (clim:labelling (:label "include external symbols?")
-	       include-external-symbols-radio)
+	     (clim:labelling (:label "external only?")
+	       external-only-radio)
 	     (clim:labelling (:label "include command internals?")
 	       include-command-internals-radio)
 	     (clim:labelling (:label "bound filter")
@@ -79,16 +80,18 @@
       (clim:run-frame-top-level frame :name "navigator"))
     *return-values*))
 
-
-
-
 (defun update-navigator-bound-filter (this-gadget selected-gadget)
+  (declare (ignore this-gadget))
   (with-slots (navigator-bound-filter) clim:*application-frame*
     (let* ((sym (read-from-string (clim:gadget-label selected-gadget))))
-      (setf navigator-bound-filter sym))
-    (maybe-update-apropos-display)))
+      (setf navigator-bound-filter sym)))
+  (maybe-update-apropos-display))
 
-
+(defun update-external-only (this-gadget selected-gadget)
+  (declare (ignore this-gadget))
+  (with-slots (external-only) clim:*application-frame*
+    (setf external-only (string= (clim:gadget-label selected-gadget) "t")))
+  (maybe-update-apropos-display))
 
 (defun maybe-update-apropos-display (&rest _)
   (declare (ignore _))
@@ -117,7 +120,7 @@
                                       'condition
                                       )))
                           (return-from render-apropos))))
-    (with-slots (navigator-bound-filter) clim:*application-frame*
+    (with-slots (external-only navigator-bound-filter) clim:*application-frame*
       (let* ((pane (clim:find-pane-named frame 'apropos-display))
              (package-apropos-regex-string 
               (clim:gadget-value (clim:find-pane-named clim:*application-frame* 'package-apropos-text-field)))
@@ -128,14 +131,14 @@
 	(let* ((matching-packages (unless (emptyp package-apropos-regex-string)
 				    (package-apropos-list package-apropos-regex-string)))
 	       (matching-symbols (unless (or (emptyp apropos-regex-string) ignorable-length-apropos)
-				   (symbol-apropos-list apropos-regex-string matching-packages))))
+				   (symbol-apropos-list apropos-regex-string external-only matching-packages))))
 	  ;; if we previously had an error condition, clear it. If it throws again,
 	  ;; see the HANDLER-BIND
 	  ;;(and navigator-error-condition (setf navigator-error-condition nil))
 	  (when matching-symbols
 	    (when navigator-bound-filter 
 	      (setf matching-symbols (remove-if-not #'(lambda (s)
-							(funcall navigator-bound-filter (car s)))
+							(funcall navigator-bound-filter s))
 						    matching-symbols)))
 	    ;;(when display-external-symbols-only?
 	    ;;  (setf matching-symbols (remove-if-not #'external-symbol? matching-symbols)))
@@ -173,7 +176,7 @@
 				(dolist (sym (take 800 matching-symbols))
 				  (fresh-line pane)
 				  (clim:stream-increment-cursor-position pane symbols-x-offset 0)
-				  (clim:present (second (second sym)) 'symbol :stream pane)
+				  (clim:present sym 'symbol :stream pane)
 		
 				  )))))
 	    
@@ -188,7 +191,7 @@
                                                                :keystroke ((:meta #\q)))
     ()
   (with-slots (return-values) clim:*application-frame*
-    (setf *return-values* return-values)
+    (setf *return-values* (remove-duplicates return-values))
     (clim:frame-exit clim:*application-frame*)))
 
 (define-navigator-command (com-select-symbol-for-return :name t)

@@ -12,10 +12,6 @@ Perhaps hotpatch define-command to throw if one feeds it a command name with %?"
          (scanner (cl-ppcre:create-scanner "COM-" :case-insensitive-mode t)))
     (and (cl-ppcre:scan scanner name) (cl-ppcre:scan #\% name))))
 
-(defun external-symbol? (symbol)
-  (declare (ignore symbol))
-  t)
-
 (defun bound? (symbol)
   (or (fboundp symbol) (boundp symbol)))
 
@@ -33,15 +29,15 @@ Perhaps hotpatch define-command to throw if one feeds it a command name with %?"
         (push p out)))
     out))
 
-(defun symbol-apropos-list (search-regex packages)
+(defun symbol-apropos-list (search-regex external-only packages)
   (let ((swank::*buffer-package* (find-package :common-lisp-user))
 	(swank::*buffer-readtable* *readtable*))
-    (mapcar #'(lambda (s) (cons s
-				(funcall
-				 (swank::listify #'swank::briefly-describe-symbol-for-emacs) s)))
-	    (sort (remove-duplicates
-		   (cl-ppcre:regex-apropos-list search-regex packages))
-		  #'swank::present-symbol-before-p))))
+    (let ((symbols  (cl-ppcre:regex-apropos-list search-regex packages)))
+      (when external-only
+	(setf symbols (delete-if #'swank::symbol-external-p symbols)))
+      (sort
+       symbols
+       #'swank::present-symbol-before-p))))
 	 
 
 ;;;
@@ -50,4 +46,5 @@ Perhaps hotpatch define-command to throw if one feeds it a command name with %?"
 ;;;
 ;;; apropos-symbols (string external-only case-sensitive package)
 ;;;
+
 
