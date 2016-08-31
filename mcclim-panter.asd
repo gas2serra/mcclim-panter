@@ -33,7 +33,8 @@
 	       (:module "symbol-navigator"
 			:serial t
 			:components
-			((:file "navigator"))))
+			((:file "apropos")
+			 (:file "navigator"))))
   :description "Debugging utility")
 
 

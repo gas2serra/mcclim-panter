@@ -125,7 +125,7 @@ TODO
   (clim:run-frame-top-level
    (clim:make-application-frame 'clim-debugger)))
 
-(clim:define-presentation-type stack-frame () :inherit-from 't)
+;;(clim:define-presentation-type stack-frame () :inherit-from 't)
 (clim:define-presentation-type restart     ())
 (clim:define-presentation-type more-type   ())
 (clim:define-presentation-type inspect     ())
@@ -139,15 +139,15 @@ TODO
   (clouseau:inspector obj))
 
 (define-clim-debugger-command (com-refresh :name "Refresh" :menu t) ()
-  (clim:change-space-requirements (clim:frame-panes *application-frame*)))
+  (clim:change-space-requirements (clim:frame-panes clim:*application-frame*)))
 
 (define-clim-debugger-command (com-quit :name "Quit" :menu t) ()
-  (clim:frame-exit *application-frame*))
+  (clim:frame-exit clim:*application-frame*))
 
 (define-clim-debugger-command (com-invoke-restart :name "Invoke restart")
     ((restart 'restart))
   (setf *returned-restart* restart)
-  (clim:frame-exit *application-frame*))
+  (clim:frame-exit clim:*application-frame*))
 
 (define-clim-debugger-command (com-toggle-stack-frame-view 
 			       :name "Toggle stack frame view")
