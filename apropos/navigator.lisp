@@ -13,14 +13,14 @@
 (defvar *return-values* nil)
 
 (clim:define-application-frame navigator ()
-  ((navigator-bound-filter :initform nil)
-   (external-only :initform nil)
-   (return-values :initform nil))
+  (;;(navigator-bound-filter :initform nil)
+   (return-values :initform nil)
+   (iapropos :initform (make-instance 'iapropos)))
   (:menu-bar nil)
   (:panes (package-apropos-text-field :text-field
-				      :value-changed-callback 'maybe-update-apropos-display)
+				      :value-changed-callback 'update-matching-packages)
 	  (apropos-text-field :text-field
-			      :value-changed-callback 'maybe-update-apropos-display)
+			      :value-changed-callback 'update-matching-symbols)
 	  (apropos-display :application
 			   :incremental-redisplay t
 			   :display-function 'render-apropos
@@ -41,8 +41,9 @@
 	  (apropos-bound-filter-radio
 	   (clim:with-radio-box (:orientation :horizontal :value-changed-callback 'update-navigator-bound-filter)
 	     (clim:radio-box-current-selection "nil")
-	     "boundp"
-	     "fboundp"))
+	     "variable"
+	     "function"
+	     "class"))
 	  (return-button :push-button
 			 :activate-callback
 			 (lambda (&rest _)
@@ -80,17 +81,37 @@
       (clim:run-frame-top-level frame :name "navigator"))
     *return-values*))
 
+(defun update-matching-packages (this-gadget value)
+  (declare (ignore this-gadget))
+  (with-slots (iapropos) clim:*application-frame*
+    (setf (iapropos-package-text iapropos) value))
+  (maybe-update-apropos-display))
+
+(defun update-matching-symbols (this-gadget value)
+  (declare (ignore this-gadget))
+  (with-slots (iapropos) clim:*application-frame*
+    (setf (iapropos-text iapropos) value))
+  (maybe-update-apropos-display))
+
 (defun update-navigator-bound-filter (this-gadget selected-gadget)
   (declare (ignore this-gadget))
-  (with-slots (navigator-bound-filter) clim:*application-frame*
-    (let* ((sym (read-from-string (clim:gadget-label selected-gadget))))
-      (setf navigator-bound-filter sym)))
+  (with-slots (iapropos) clim:*application-frame*
+    (cond
+      ((string= (clim:gadget-label selected-gadget) "variable")
+       (setf (iapropos-kind iapropos) :variable))
+      ((string= (clim:gadget-label selected-gadget) "function")
+       (setf (iapropos-kind iapropos) :function))
+      ((string= (clim:gadget-label selected-gadget) "class")
+       (setf (iapropos-kind iapropos) :class))
+      (t 
+       (setf (iapropos-kind iapropos) nil))))
   (maybe-update-apropos-display))
 
 (defun update-external-only (this-gadget selected-gadget)
   (declare (ignore this-gadget))
-  (with-slots (external-only) clim:*application-frame*
-    (setf external-only (string= (clim:gadget-label selected-gadget) "t")))
+  (with-slots (iapropos) clim:*application-frame*
+    (setf (iapropos-external-only-p iapropos) 
+	  (string= (clim:gadget-label selected-gadget) "t")))
   (maybe-update-apropos-display))
 
 (defun maybe-update-apropos-display (&rest _)
@@ -110,81 +131,61 @@
   ;; - when the change is a single character, filter existing search, etc.
   ;; - index SBCL symbol table each intern..
   ;; - clim-listener::apropos-present-symbol
-  ;; - (cl-ppcre::regex-apropos-aux ("regex" packages t))  
-  (handler-bind ((error (lambda (condition)
-                          ;;(setf navigator-error-condition condition)
-                          (clim:with-drawing-options (pane :ink clim:+red+ :text-size 16)
-                            (let* ((*package* (find-package 'keyword)))
-                              (format pane "Error encountered while trying to update apropos display~2%~S~2%Inspect ~S for more info" 
-                                      condition
-                                      'condition
-                                      )))
-                          (return-from render-apropos))))
-    (with-slots (external-only navigator-bound-filter) clim:*application-frame*
-      (let* ((pane (clim:find-pane-named frame 'apropos-display))
-             (package-apropos-regex-string 
-              (clim:gadget-value (clim:find-pane-named clim:*application-frame* 'package-apropos-text-field)))
-             (apropos-regex-string 
-              (clim:gadget-value (clim:find-pane-named clim:*application-frame* 'apropos-text-field)))
-             (ignorable-length-apropos (<= (length apropos-regex-string) 3))
-             (symbols-x-offset 200))
-	(let* ((matching-packages (unless (emptyp package-apropos-regex-string)
-				    (package-apropos-list package-apropos-regex-string)))
-	       (matching-symbols (unless (or (emptyp apropos-regex-string) ignorable-length-apropos)
-				   (symbol-apropos-list apropos-regex-string external-only matching-packages))))
-	  ;; if we previously had an error condition, clear it. If it throws again,
-	  ;; see the HANDLER-BIND
-	  ;;(and navigator-error-condition (setf navigator-error-condition nil))
-	  (when matching-symbols
-	    (when navigator-bound-filter 
-	      (setf matching-symbols (remove-if-not #'(lambda (s)
-							(funcall navigator-bound-filter s))
-						    matching-symbols)))
-	    ;;(when display-external-symbols-only?
-	    ;;  (setf matching-symbols (remove-if-not #'external-symbol? matching-symbols)))
-	    ;;(unless display-command-internals?
-	    ;;  (setf matching-symbols (remove-if #'command-internals-symbol? matching-symbols))))
-	    )
-	  
-	  (labels ((set-offset-start-position (&key (y 5)) 
-		     (setf (clim:stream-cursor-position pane) (values 10 y)))
-		   
-		   (matching-packages-column ()
-		     ;; (length (list-all-packages)) => 397 so we'll just display them all..
-		     (set-offset-start-position)
-		     (clim:surrounding-output-with-border
-			 (pane :shape :underline :ink clim:+black+)
-		       (clim:with-text-style (pane navigator-column-heading-text-style)
-			 (princ "Packages" pane)))
-		     (clim:stream-increment-cursor-position pane 0 -8)                    
-		     (dolist (package matching-packages)
-		       (fresh-line pane)
-		       (clim:stream-increment-cursor-position pane 10 0)
-		       (princ (package-name package) pane)))
-		   
-		   (matching-symbols-column ()
-		     (setf (clim:stream-cursor-position pane) (values symbols-x-offset 5))
-		     (clim:surrounding-output-with-border
-			 (pane :shape :underline :ink clim:+black+)
-		       (clim:with-text-style (pane navigator-column-heading-text-style)
-			 (princ "Symbols" pane)))
-		     (if ignorable-length-apropos
-			 (progn (fresh-line pane)
-				(clim:stream-increment-cursor-position pane symbols-x-offset 0)
-				(princ "; (<= 3 search-string-length), not searching" pane))
-			 (progn (clim:stream-increment-cursor-position pane 0 -8)
-				(dolist (sym (take 800 matching-symbols))
-				  (fresh-line pane)
-				  (clim:stream-increment-cursor-position pane symbols-x-offset 0)
-				  (clim:present sym 'symbol :stream pane)
-		
-				  )))))
-	    
-	    (if (and (null matching-packages) (null matching-symbols))
-		(progn (set-offset-start-position)
-		       (princ "; no results" pane))
-		(progn (matching-packages-column)
-		       (matching-symbols-column)))))))))
+  ;; - (cl-ppcre::regex-apropos-aux ("regex" packages t))
+  (with-slots (iapropos)
+      clim:*application-frame*
+    (when (iapropos-syntax-error iapropos)
+      (clim:with-drawing-options (pane :ink clim:+red+ :text-size 16)
+	(let* ((*package* (find-package 'keyword)))
+	  (format pane "Error encountered while trying to update apropos display~2%~S~2%Inspect ~S for more info" 
+		  (iapropos-syntax-error iapropos)
+		  '(iapropos-syntax-error iapropos)
+		  )))
+      (return-from render-apropos))
+    (let* ((pane (clim:find-pane-named frame 'apropos-display))
+	   (matching-symbols (iapropos-matching-symbols iapropos))
+	   (matching-packages (iapropos-matching-packages iapropos))
+	   (ignorable-length-apropos (< (length (iapropos-text iapropos)) 3))
+	   (symbols-x-offset 200))
+      (labels ((set-offset-start-position (&key (y 5)) 
+		 (setf (clim:stream-cursor-position pane) (values 10 y)))
+	       
+	       (matching-packages-column ()
+		 ;; (length (list-all-packages)) => 397 so we'll just display them all..
+		 (set-offset-start-position)
+		 (clim:surrounding-output-with-border
+		     (pane :shape :underline :ink clim:+black+)
+		   (clim:with-text-style (pane navigator-column-heading-text-style)
+		     (princ "Packages" pane)))
+		 (clim:stream-increment-cursor-position pane 0 -8)                    
+		 (dolist (package matching-packages)
+		   (fresh-line pane)
+		   (clim:stream-increment-cursor-position pane 10 0)
+		   (princ (package-name package) pane)))
+	       
+	       (matching-symbols-column ()
+		 (setf (clim:stream-cursor-position pane) (values symbols-x-offset 5))
+		 (clim:surrounding-output-with-border
+		     (pane :shape :underline :ink clim:+black+)
+		   (clim:with-text-style (pane navigator-column-heading-text-style)
+		     (princ "Symbols" pane)))
+		 (if ignorable-length-apropos
+		     (progn (fresh-line pane)
+			    (clim:stream-increment-cursor-position pane symbols-x-offset 0)
+			    (princ "; (<= 3 search-string-length), not searching" pane))
+		     (progn (clim:stream-increment-cursor-position pane 0 -8)
+			    (dolist (sym (take 800 matching-symbols))
+			      (fresh-line pane)
+			      (clim:stream-increment-cursor-position pane symbols-x-offset 0)
+			      (clim:present sym 'symbol :stream pane)
+			      
+			      )))))
+	
+	(if (and (null matching-packages) (null matching-symbols))
+	    (progn (set-offset-start-position)
+		   (princ "; no results" pane))
+	    (progn (matching-packages-column)
+		   (matching-symbols-column)))))))
 
 (define-navigator-command (com-quit-and-return-values-to-point :menu t
                                                                :name t

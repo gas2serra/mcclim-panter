@@ -25,6 +25,7 @@
 			:components
 			((:file "mcclim-panter-apropos")
 			 (:file "apropos")
+			 (:file "interactive-apropos")
 			 (:file "navigator"))))
   :description "Apropos Navigator")
 
