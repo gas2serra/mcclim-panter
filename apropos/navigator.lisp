@@ -13,8 +13,7 @@
 (defvar *return-values* nil)
 
 (clim:define-application-frame navigator ()
-  (;;(navigator-bound-filter :initform nil)
-   (return-values :initform nil)
+  ((return-values :initform nil)
    (iapropos :initform (make-instance 'iapropos)))
   (:menu-bar nil)
   (:panes (package-apropos-text-field :text-field
@@ -43,7 +42,8 @@
 	     (clim:radio-box-current-selection "nil")
 	     "variable"
 	     "function"
-	     "class"))
+	     "class"
+	     "generic-function"))
 	  (return-button :push-button
 			 :activate-callback
 			 (lambda (&rest _)
@@ -63,7 +63,7 @@
 	       external-only-radio)
 	     (clim:labelling (:label "include command internals?")
 	       include-command-internals-radio)
-	     (clim:labelling (:label "bound filter")
+	     (clim:labelling (:label "kind")
 	       apropos-bound-filter-radio))
 	   (clim:horizontally nil
 	     (1/2
@@ -103,6 +103,8 @@
        (setf (iapropos-kind iapropos) :function))
       ((string= (clim:gadget-label selected-gadget) "class")
        (setf (iapropos-kind iapropos) :class))
+      ((string= (clim:gadget-label selected-gadget) "generic-function")
+       (setf (iapropos-kind iapropos) :generic-function))
       (t 
        (setf (iapropos-kind iapropos) nil))))
   (maybe-update-apropos-display))
@@ -137,7 +139,7 @@
     (when (iapropos-syntax-error iapropos)
       (clim:with-drawing-options (pane :ink clim:+red+ :text-size 16)
 	(let* ((*package* (find-package 'keyword)))
-	  (format pane "Error encountered while trying to update apropos display~2%~S~2%Inspect ~S for more info" 
+	  (format pane "Error encountered while trying to update apropos display~2%~A~2%Inspect ~S for more info" 
 		  (iapropos-syntax-error iapropos)
 		  '(iapropos-syntax-error iapropos)
 		  )))
@@ -145,7 +147,7 @@
     (let* ((pane (clim:find-pane-named frame 'apropos-display))
 	   (matching-symbols (iapropos-matching-symbols iapropos))
 	   (matching-packages (iapropos-matching-packages iapropos))
-	   (ignorable-length-apropos (< (length (iapropos-text iapropos)) 3))
+	   (ignorable-length-apropos (< (length (iapropos-text iapropos)) 2))
 	   (symbols-x-offset 200))
       (labels ((set-offset-start-position (&key (y 5)) 
 		 (setf (clim:stream-cursor-position pane) (values 10 y)))
@@ -168,8 +170,11 @@
 		 (clim:surrounding-output-with-border
 		     (pane :shape :underline :ink clim:+black+)
 		   (clim:with-text-style (pane navigator-column-heading-text-style)
-		     (princ "Symbols" pane)))
-		 (if ignorable-length-apropos
+		     (princ (format nil "Symbols (~A~A)"
+				    (length matching-symbols)
+				    (if (iapropos-result-overflow iapropos) "*" ""))
+			    pane)))
+		 (if (and nil ignorable-length-apropos)
 		     (progn (fresh-line pane)
 			    (clim:stream-increment-cursor-position pane symbols-x-offset 0)
 			    (princ "; (<= 3 search-string-length), not searching" pane))

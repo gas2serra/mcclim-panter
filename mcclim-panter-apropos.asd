@@ -18,7 +18,7 @@
   :version "0.1"
   :author "Alessandro Serra"
   :license "GPLv3"
-  :depends-on (:mcclim :clim-listener :cl-panter :cl-ppcre :anaphora :swank)
+  :depends-on (:mcclim :clim-listener :cl-panter :cl-ppcre :anaphora :swank :closer-mop)
   :components (
 	       (:module "apropos"
 			:serial t
