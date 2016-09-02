@@ -24,8 +24,8 @@
 			:serial t
 			:components
 			((:file "mcclim-panter-apropos")
-			 (:file "apropos")
-			 (:file "interactive-apropos")
+			 (:file "utility")
+			 (:file "iapropos")
 			 (:file "navigator"))))
   :description "Apropos Navigator")
 

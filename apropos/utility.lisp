@@ -1,0 +1,73 @@
+(in-package :mcclim-panter-apropos)
+
+;;;
+;;; Constants
+;;;
+
+(defparameter *symbol-bounding-types* '(:variable :function :generic-function
+				       :class :macro :setf :type))
+
+;;;
+;;; utility functions
+;;;
+
+(defun symbol-external-p (symbol)
+  "Return t only if the symbol is external"
+  (swank::symbol-external-p symbol))
+
+(defun symbol-bound-to (symbol type)
+  (ccase type
+    (:variable
+     (boundp symbol))
+    (:function
+     (fboundp symbol))
+    (:macro
+     (macro-function symbol))
+    (:class
+     (find-class symbol nil))
+    (:generic-function
+     (and (fboundp symbol)
+	  (typep (symbol-function symbol) 'generic-function)))
+    ((:setf :type)
+     (not (eq (getf (swank/backend::describe-symbol-for-emacs symbol) type 'cl:t)
+	      t)))))
+
+(defun list-symbol-bounding-types (symbol)
+  (remove-if #'(lambda (type)
+		 (not (symbol-bound-to symbol type)))
+	     *symbol-bounding-types*))
+
+(defun symbol-documentation (symbol type)
+  (let ((doc (getf (swank/backend::describe-symbol-for-emacs symbol)
+		   (case type
+		     (:class
+		      :type)
+		     (:generic-function
+		      #+sbcl :generic-function
+		      #+ccl :function)
+		     (otherwise
+		      type))
+		   'cl:t)))
+    (if (member doc '(t nil :NOT-DOCUMENTED))
+	nil
+	doc)))
+
+(defun symbol-description (symbol type)
+  (with-output-to-string (*standard-output*)
+    (case type
+      ((:variable nil)
+       (describe symbol))
+      (:function
+       (describe (symbol-function symbol)))
+      (:macro
+       (describe (macro-function symbol)))
+      (:class
+       (describe (find-class symbol)))
+      (:generic-function
+       (describe (symbol-function symbol)))
+      (:setf
+       #+sbcl (describe (sb-int:info :setf :expander symbol))
+       #+ccl (describe (ccl:setf-function-spec-name `(setf ,symbol))))
+      (:type
+       #+sbcl (describe (sb-kernel:values-specifier-type symbol))
+       #+ccl (describe (or (find-class symbol nil) symbol))))))
