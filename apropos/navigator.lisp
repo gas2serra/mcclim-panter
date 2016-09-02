@@ -5,11 +5,10 @@
 
 (in-package :mcclim-panter-apropos)
 
-(defparameter navigator-column-heading-text-style
-  (clim:make-text-style
-   nil
-   :bold 12))
-  
+(defparameter *navigator-column-heading-text-style* (clim:make-text-style
+						     nil
+						     :bold 12))
+
 (defvar *return-values* nil)
 
 (clim:define-application-frame navigator ()
@@ -18,9 +17,9 @@
    (iapropos :initform (make-instance 'iapropos)))
   (:menu-bar nil)
   (:panes (package-apropos-text-field :text-field
-				      :value-changed-callback 'update-matching-packages)
+				      :value-changed-callback '%update-matching-packages)
 	  (apropos-text-field :text-field
-			      :value-changed-callback 'update-matching-symbols)
+			      :value-changed-callback '%update-matching-symbols)
 	  (apropos-display :application
 			   :incremental-redisplay t
 			   :display-function 'render-apropos
@@ -34,26 +33,26 @@
 				 :end-of-page-action :allow
 				 :min-width 600)
 	  (fully-qualified-symbols-radio
-	   (clim:with-radio-box (:orientation :horizontal :value-changed-callback 'maybe-update-apropos-display)
+	   (clim:with-radio-box (:orientation :horizontal :value-changed-callback '%maybe-update-apropos-display)
 	     (clim:radio-box-current-selection "t")
 	     "nil"))
 	  (external-radio
-	   (clim:with-radio-box (:orientation :horizontal :value-changed-callback 'update-external)
+	   (clim:with-radio-box (:orientation :horizontal :value-changed-callback '%update-external)
 	     "yes"
 	     "no"
 	     (clim:radio-box-current-selection "nil")))
 	  (documentation-radio
-	   (clim:with-radio-box (:orientation :horizontal :value-changed-callback 'update-documentation)
+	   (clim:with-radio-box (:orientation :horizontal :value-changed-callback '%update-documentation)
 	     "yes"
 	     "no"
 	     (clim:radio-box-current-selection "nil")))
 	  (include-command-internals-radio
-	   (clim:with-radio-box (:orientation :horizontal :value-changed-callback 'maybe-update-apropos-display)
+	   (clim:with-radio-box (:orientation :horizontal :value-changed-callback '%maybe-update-apropos-display)
 	     "t"
 	     (clim:radio-box-current-selection "nil")))
 	  (apropos-bound-filter-radio
 	   (clim:with-radio-box (:orientation :vertical
-				 :value-changed-callback 'update-navigator-bound-filter)
+				 :value-changed-callback '%update-navigator-bound-filter)
 	     (clim:radio-box-current-selection "nil") "variable"
 	     "function" "class" "generic-function" "macro"
 	     "setf" "type"))
@@ -72,11 +71,11 @@
 	  (subclass-option :option-pane
 			   :value nil
 			   :items (list nil 'clim:pane 'clim:application-frame)
-			   :value-changed-callback #'update-subclass-option)
+			   :value-changed-callback #'%update-subclass-option)
 	  (metaclass-option :option-pane
 			    :value nil
 			    :items (list nil 'climi::presentation-type-class)
-			    :value-changed-callback #'update-metaclass-option)
+			    :value-changed-callback #'%update-metaclass-option)
 	  )
   (:layouts
    (:default
@@ -117,87 +116,100 @@
 		package-apropos-text-field))))))))
 
 
-(defun run-navigator ()
-  (let ((*return-values* nil))
-    (let* ((frame (clim:make-application-frame 'navigator)))
-      (setf (clim:frame-current-layout frame) :default) 
-      (setf (getf (slot-value frame 'clim-internals::properties) 'clim-clx::focus)
-	    (clim:find-pane-named frame 'package-apropos-text-field))
-      (clim:run-frame-top-level frame :name "navigator"))
-    *return-values*))
 
-(defun update-matching-packages (this-gadget value)
+
+;;;
+;;; callbacks
+;;;
+
+(defun %update-matching-packages (this-gadget value)
   (declare (ignore this-gadget))
   (with-slots (iapropos syntax-error) clim:*application-frame*
     (handler-bind ((cl-ppcre:ppcre-syntax-error
 		    #'(lambda (condition)
 			(setf  syntax-error condition)
-			(maybe-update-apropos-display)
-			(return-from update-matching-packages))))
+			(%maybe-update-apropos-display)
+			(return-from %update-matching-packages))))
       (setf syntax-error nil)
       (setf (iapropos-package-text iapropos) value)
-      (maybe-update-apropos-display))))
+      (%maybe-update-apropos-display))))
 
-(defun update-matching-symbols (this-gadget value)
+(defun %update-matching-symbols (this-gadget value)
   (declare (ignore this-gadget))
   (with-slots (iapropos syntax-error) clim:*application-frame*
     (handler-bind ((cl-ppcre:ppcre-syntax-error
 		    #'(lambda (condition)
 			(setf  syntax-error condition)
-			(maybe-update-apropos-display)
-			(return-from update-matching-symbols))))
+			(%maybe-update-apropos-display)
+			(return-from %update-matching-symbols))))
       (setf syntax-error nil)
       (setf (iapropos-text iapropos) value))
-    (maybe-update-apropos-display)))
+    (%maybe-update-apropos-display)))
 
-(defun update-navigator-bound-filter (this-gadget selected-gadget)
+(defun %update-navigator-bound-filter (this-gadget selected-gadget)
   (declare (ignore this-gadget))
   (with-slots (iapropos) clim:*application-frame*
     (if (string= (clim:gadget-label selected-gadget) "nil")
 	(setf (iapropos-bound-to iapropos) nil)
 	(setf (iapropos-bound-to iapropos) (intern (string-upcase (clim:gadget-label selected-gadget)) :keyword))))
-  (maybe-update-apropos-display))
+  (if (string= (clim:gadget-label selected-gadget) "class")
+      (progn
+	(clim:activate-gadget (clim:find-pane-named clim:*application-frame* 'subclass-option))
+	(clim:activate-gadget (clim:find-pane-named clim:*application-frame* 'metaclass-option)))
+      (progn
+	(clim:deactivate-gadget (clim:find-pane-named clim:*application-frame* 'subclass-option))
+	(clim:deactivate-gadget (clim:find-pane-named clim:*application-frame* 'metaclass-option))))
+  (if (string/= (clim:gadget-label selected-gadget) "nil")
+      (clim:activate-gadget (clim:find-pane-named clim:*application-frame* 'documentation-radio))
+      (clim:deactivate-gadget (clim:find-pane-named clim:*application-frame* 'documentation-radio)))
+  (%maybe-update-apropos-display))
 
-(defun update-external (this-gadget selected-gadget)
+(defun %update-external (this-gadget selected-gadget)
   (declare (ignore this-gadget))
   (with-slots (iapropos) clim:*application-frame*
     (if (string= (clim:gadget-label selected-gadget) "nil")
 	(setf (iapropos-external-yes/no iapropos) nil)
 	(setf (iapropos-external-yes/no iapropos)
 	      (intern (string-upcase (clim:gadget-label selected-gadget)) :keyword))))
-  (maybe-update-apropos-display))
+  (%maybe-update-apropos-display))
 
-(defun update-documentation (this-gadget selected-gadget)
+(defun %update-documentation (this-gadget selected-gadget)
   (declare (ignore this-gadget))
   (with-slots (iapropos) clim:*application-frame*
     (if (string= (clim:gadget-label selected-gadget) "nil")
 	(setf (iapropos-documentation-yes/no iapropos) nil)
 	(setf (iapropos-documentation-yes/no iapropos)
 	      (intern (string-upcase (clim:gadget-label selected-gadget)) :keyword))))
-  (maybe-update-apropos-display))
+  (%maybe-update-apropos-display))
 
-(defun update-subclass-option (this-gadget selected-value)
+(defun %update-subclass-option (this-gadget selected-value)
   (declare (ignore this-gadget))
   (with-slots (iapropos) clim:*application-frame*
     (setf (iapropos-subclass-of iapropos) 
 	  selected-value))
-  (maybe-update-apropos-display))
+  (%maybe-update-apropos-display))
 
-(defun update-metaclass-option (this-gadget selected-value)
+(defun %update-metaclass-option (this-gadget selected-value)
   (declare (ignore this-gadget))
   (with-slots (iapropos) clim:*application-frame*
     (setf (iapropos-metaclass-of iapropos) 
 	  selected-value))
-  (maybe-update-apropos-display))
+  (%maybe-update-apropos-display))
 
-
-(defun maybe-update-apropos-display (&rest _)
+(defun %maybe-update-apropos-display (&rest _)
   (declare (ignore _))
   (anaphora:awhen (clim:find-pane-named clim:*application-frame* 'apropos-display)
-    (clim:redisplay-frame-pane clim:*application-frame* anaphora:it :force-p t)))
+		  (clim:redisplay-frame-pane clim:*application-frame* anaphora:it :force-p t)))
 
-(defun emptyp (o)
-  (eq o nil))
+(defun %maybe-update-documentation-display (&rest _)
+  (declare (ignore _))
+  (anaphora:awhen (clim:find-pane-named clim:*application-frame* 'documentation-display)
+		  (clim:redisplay-frame-pane clim:*application-frame* anaphora:it :force-p t)))
+
+
+;;;
+;;; render functions
+;;;
 
 (defun take (n l)
   (subseq l 0 (if (< (length l) n) (if (> n (1- (length l))) (length l) (1- (length l))) n)))
@@ -214,7 +226,6 @@
       (fresh-line pane)
       (format pane "Description~%-----~%~A~%~%"
 	      (symbol-description (car return-values) (iapropos-bound-to iapropos))))))
-
 
 (defun render-apropos (frame pane)
   ;; TODO
@@ -246,7 +257,7 @@
 		 (set-offset-start-position)
 		 (clim:surrounding-output-with-border
 		     (pane :shape :underline :ink clim:+black+)
-		   (clim:with-text-style (pane navigator-column-heading-text-style)
+		   (clim:with-text-style (pane *navigator-column-heading-text-style*)
 		     (princ "Packages" pane)))
 		 (clim:stream-increment-cursor-position pane 0 -8)                    
 		 (dolist (package matching-packages)
@@ -259,7 +270,7 @@
 		   (setf (clim:stream-cursor-position pane) (values symbols-x-offset 5))
 		   (clim:surrounding-output-with-border
 		       (pane :shape :underline :ink clim:+black+)
-		     (clim:with-text-style (pane navigator-column-heading-text-style)
+		     (clim:with-text-style (pane *navigator-column-heading-text-style*)
 		       (princ (format nil "Symbols (~A/~A~A)"
 				      (length symbols-to-print)
 				      (length matching-symbols)
@@ -276,6 +287,10 @@
 	    (progn (matching-packages-column)
 		   (matching-symbols-column)))))))
 
+;;;
+;;; exit
+;;;
+
 (defun quit-and-return-values (this-gadget)
   (with-slots (return-values iapropos) clim:*application-frame*
     (setf *return-values* 
@@ -287,7 +302,10 @@
 	    (:packages
 	     (iapropos-matching-packages iapropos))))
     (clim:frame-exit clim:*application-frame*)))
-       
+
+;;;
+;;; commands
+;;;
 
 (define-navigator-command (com-quit-and-return-values :menu t
 						      :name t
@@ -300,8 +318,25 @@
 (define-navigator-command (com-select-symbol-for-return :name t)
     ((sym 'symbol :gesture :select))
   (with-slots (return-values) clim:*application-frame*
-    (push sym return-values)))
+    (push sym return-values))
+  (%maybe-update-documentation-display))
 
+;;;
+;;; run
+;;;
+
+(defun run-navigator ()
+  (let ((*return-values* nil))
+    (let* ((frame (clim:make-application-frame 'navigator)))
+      (setf (clim:frame-current-layout frame) :default) 
+      (setf (getf (slot-value frame 'clim-internals::properties) 'clim-clx::focus)
+	    (clim:find-pane-named frame 'package-apropos-text-field))
+      ;;where?
+      ;;(clim:deactivate-gadget (clim:find-pane-named frame 'subclass-option))
+      ;;(clim:deactivate-gadget (clim:find-pane-named frame 'metaclass-option))
+      ;;(clim:deactivate-gadget (clim:find-pane-named frame 'documentation-radio))
+      (clim:run-frame-top-level frame :name "navigator"))
+    *return-values*))
 
 ;;;
 ;;; climacs

@@ -1,74 +1,6 @@
 (in-package :mcclim-panter-apropos)
 
 ;;;
-;;; utility functions
-;;;
-
-(defun symbol-external-p (symbol)
-  "Return t only if the symbol is external"
-  (swank::symbol-external-p symbol))
-
-(defparameter *symbol-bounding-types* '(:variable :function :generic-function
-					:class :macro :setf :type))
-
-(defun symbol-bound-to (symbol type)
-  (ccase type
-    (:variable
-     (boundp symbol))
-    (:function
-     (fboundp symbol))
-    (:macro
-     (macro-function symbol))
-    (:class
-     (find-class symbol nil))
-    (:generic-function
-     (and (fboundp symbol)
-	  (typep (symbol-function symbol) 'generic-function)))
-    ((:setf :type)
-     (not (eq (getf (swank/backend::describe-symbol-for-emacs symbol) type 'cl:t)
-	      t)))))
-
-(defun list-symbol-bounding-types (symbol)
-  (remove-if #'(lambda (type)
-		 (not (symbol-bound-to symbol type)))
-	     *symbol-bounding-types*))
-
-(defun symbol-documentation (symbol type)
-  (let ((doc (getf (swank/backend::describe-symbol-for-emacs symbol)
-		   (case type
-		     (:class
-		      :type)
-		     (:generic-function
-		      #+sbcl :generic-function
-		      #+ccl :function)
-		     (otherwise
-		      type))
-		   'cl:t)))
-    (if (member doc '(t nil :NOT-DOCUMENTED))
-	nil
-	doc)))
-
-(defun symbol-description (symbol type)
-  (with-output-to-string (*standard-output*)
-    (case type
-      ((:variable nil)
-       (describe symbol))
-      (:function
-       (describe (symbol-function symbol)))
-      (:macro
-       (describe (macro-function symbol)))
-      (:class
-       (describe (find-class symbol)))
-      (:generic-function
-       (describe (symbol-function symbol)))
-      (:setf
-       #+sbcl (describe (sb-int:info :setf :expander symbol))
-       #+ccl (describe (ccl:setf-function-spec-name `(setf ,symbol))))
-      (:type
-       #+sbcl (describe (sb-kernel:values-specifier-type symbol))
-       #+ccl (describe (or (find-class symbol nil) symbol))))))
-
-;;;
 ;;; parameters
 ;;;
 
@@ -123,7 +55,8 @@
 ;;; methods
 (defmethod (setf iapropos-text) :after (text (iapropos iapropos))
   (declare (ignore text))
-  (with-slots (syntax-error-p apropos-text cached-apropos-scanner cached-matching-symbols) iapropos
+  (with-slots (syntax-error-p apropos-text cached-apropos-scanner
+			      cached-matching-symbols) iapropos
     (handler-bind ((cl-ppcre:ppcre-syntax-error
 		    #'(lambda (condition)
 			(setf cached-matching-symbols nil)
@@ -131,12 +64,14 @@
 			  (format *debug-io* "iapropos: ~A~%" condition)
 			  (return-from iapropos-text condition)))))
       (when apropos-text
-	(setf cached-apropos-scanner (cl-ppcre:create-scanner apropos-text :case-insensitive-mode t)))
+	(setf cached-apropos-scanner (cl-ppcre:create-scanner
+				      apropos-text :case-insensitive-mode t)))
       (%iapropos-update-matching-symbols iapropos))))
 
 (defmethod (setf iapropos-package-text) :after (text (iapropos iapropos))
   (declare (ignore text))
-  (with-slots (syntax-error-p cached-matching-symbols cached-matching-packages) iapropos
+  (with-slots (syntax-error-p cached-matching-symbols
+			      cached-matching-packages) iapropos
     (handler-bind ((cl-ppcre:ppcre-syntax-error
 		    #'(lambda (condition)
 			(setf cached-matching-packages nil)
@@ -193,7 +128,8 @@
     (setf cached-matching-packages
 	  (if (not (and package-apropos-text (string/= package-apropos-text "")))
 	      (list-all-packages)
-	      (let ((scanner (cl-ppcre:create-scanner package-apropos-text :case-insensitive-mode t))
+	      (let ((scanner (cl-ppcre:create-scanner package-apropos-text
+						      :case-insensitive-mode t))
 		    (out))
 		(dolist (p (list-all-packages))
 		  (when (cl-ppcre:scan scanner (package-name p))
