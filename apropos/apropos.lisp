@@ -7,7 +7,7 @@
 
 
 
-
+#|
 (defun command-internals-symbol? (symbol)
   "XXX, If this were implemented properly, it would scan for one of the
 following strings: acceptor, partial or unparser. But since it is cheaper..
@@ -16,6 +16,7 @@ Perhaps hotpatch define-command to throw if one feeds it a command name with %?"
          (scanner (cl-ppcre:create-scanner "COM-" :case-insensitive-mode t)))
     (and (cl-ppcre:scan scanner name) (cl-ppcre:scan #\% name))))
 
+|#
 #|
 (defun bound? (symbol)
   (or (fboundp symbol) (boundp symbol)))
@@ -27,6 +28,8 @@ Perhaps hotpatch define-command to throw if one feeds it a command name with %?"
 ;;;
 ;;; Apropos functions
 ;;;
+
+#|
 (defun package-apropos-list (search-regex)
   (let* ((out)
          (scanner (cl-ppcre:create-scanner search-regex :case-insensitive-mode t)))
@@ -55,7 +58,7 @@ Perhaps hotpatch define-command to throw if one feeds it a command name with %?"
        out
        #'swank::present-symbol-before-p))))
 	 
-
+|#
 ;;;
 ;;; apropos
 ;;;  (swank:apropos-list-for-emacs "defun")
