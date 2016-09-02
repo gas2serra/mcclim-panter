@@ -6,20 +6,29 @@
 		)
   (:export
    ;; iapropos
-   #:*defoult-iapropos-max-result-length*
+   #:*default-iapropos-max-result-length*
+   #:*symbol-bounding-types*
    #:iapropos
    #:iapropos-text
    #:iapropos-package-text
-   #:iapropos-external-only-p
-   #:iapropos-bounded-to
+   #:iapropos-external-yes/no
+   #:iapropos-documentation-yes/no
+   #:iapropos-bound-to
    #:iapropos-subclass-of
    #:iapropos-metaclass-of
-   #:iapropos-max-result-lengt
-   #:iapropos-result-overflow
+   #:iapropos-filter-fn
+   #:iapropos-max-result-length
+   #:iapropos-result-overflow-p
    #:iapropos-syntax-error-p
    #:iapropos-matching-packages
    #:iapropos-matching-symbols
    #:iapropos-matching-symbol-p
+   ;; functions
+   #:symbol-external-p
+   #:symbol-bound-to
+   #:list-symbol-bounding-types
+   #:symbol-documentation
+   #:symbol-description
    ;; gui
    #:run-navigator
    ))

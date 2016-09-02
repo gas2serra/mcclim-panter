@@ -5,13 +5,75 @@
 ;;;
 
 (defun symbol-external-p (symbol)
+  "Return t only if the symbol is external"
   (swank::symbol-external-p symbol))
+
+(defparameter *symbol-bounding-types* '(:variable :function :generic-function
+					:class :macro :setf :type))
+
+(defun symbol-bound-to (symbol type)
+  (ccase type
+    (:variable
+     (boundp symbol))
+    (:function
+     (fboundp symbol))
+    (:macro
+     (macro-function symbol))
+    (:class
+     (find-class symbol nil))
+    (:generic-function
+     (and (fboundp symbol)
+	  (typep (symbol-function symbol) 'generic-function)))
+    ((:setf :type)
+     (not (eq (getf (swank/backend::describe-symbol-for-emacs symbol) type 'cl:t)
+	      t)))))
+
+(defun list-symbol-bounding-types (symbol)
+  (remove-if #'(lambda (type)
+		 (not (symbol-bound-to symbol type)))
+	     *symbol-bounding-types*))
+
+(defun symbol-documentation (symbol type)
+  (let ((doc (getf (swank/backend::describe-symbol-for-emacs symbol)
+		   (case type
+		     (:class
+		      :type)
+		     (:generic-function
+		      #+sbcl :generic-function
+		      #+ccl :function)
+		     (otherwise
+		      type))
+		   'cl:t)))
+    (if (member doc '(t nil :NOT-DOCUMENTED))
+	nil
+	doc)))
+
+(defun symbol-description (symbol type)
+  (with-output-to-string (*standard-output*)
+    (case type
+      ((:variable nil)
+       (describe symbol))
+      (:function
+       (describe (symbol-function symbol)))
+      (:macro
+       (describe (macro-function symbol)))
+      (:class
+       (describe (find-class symbol)))
+      (:generic-function
+       (describe (symbol-function symbol)))
+      (:setf
+       #+sbcl (describe (sb-int:info :setf :expander symbol))
+       #+ccl (describe (ccl:setf-function-spec-name `(setf ,symbol))))
+      (:type
+       #+sbcl (describe (sb-kernel:values-specifier-type symbol))
+       #+ccl (describe (or (find-class symbol nil) symbol))))))
 
 ;;;
 ;;; parameters
 ;;;
 
-(defparameter *default-iapropos-max-result-length* 1000)
+(defparameter *default-iapropos-max-result-length* 1000
+  "The max length of the result")
 
 ;;;
 ;;; interactive apropos
@@ -23,33 +85,39 @@
    (cached-apropos-scanner :initform nil)
    (package-apropos-text :initform ""
 			 :accessor iapropos-package-text)
-   (external-only-p :type '(member t nil)
+   (external-yes/no :type '(member nil :yes :no)
 		    :initform nil
-		    :accessor iapropos-external-only-p)
-   (bounded-to :type '(member nil
+		    :accessor iapropos-external-yes/no)
+   (documentation-yes/no :type '(member nil :yes :no)
+			 :initform nil
+			 :accessor iapropos-documentation-yes/no)
+   (bound-to :type '(member nil
 		       :variable :function :generic-function
 		       :class :macro
 		       :setf :type)
 	       :initform nil
-	       :accessor iapropos-bounded-to)
+	       :accessor iapropos-bound-to)
    (subclass-of :initform nil
 		:accessor iapropos-subclass-of)
    (metaclass-of :initform nil
 		 :accessor iapropos-metaclass-of)
    (filter-fn :initform nil
-	     :accessor iapropos-filter-fn)
+	      :accessor iapropos-filter-fn)
    (max-result-length :initform *default-iapropos-max-result-length*
 		      :accessor iapropos-max-result-length)
-   (result-overflow :initform nil
-		    :reader iapropos-result-overflow)
+   (result-overflow-p :initform nil
+		      :reader iapropos-result-overflow-p)
    (cached-matching-packages :initform (list-all-packages))
    (cached-matching-symbols :initform nil)
    (syntax-error-p :initform t
-		   :accessor iapropos-syntax-error-p)))
+		   :accessor iapropos-syntax-error-p))
+  (:documentation "Interactive apropos class based on cl-ppcre and swank"))
 
 ;;; generic funtions
-(defgeneric iapropos-matching-symbols (iapropos))
-(defgeneric iapropos-matching-packages (iapropos))
+(defgeneric iapropos-matching-symbols (iapropos)
+  (:documentation "Return the list of symbols that match the specified criteria"))
+(defgeneric iapropos-matching-packages (iapropos)
+  (:documentation "Return the list of packages that match the specified criteria"))
 (defgeneric iapropos-matching-symbol-p (iapropos symbol))
 
 ;;; methods
@@ -78,15 +146,15 @@
 			  (return-from iapropos-package-text condition)))))
       (%iapropos-update-matching-packages iapropos))))
 
-(defmethod (setf iapropos-external-only-p) :after (val (iapropos iapropos))
+(defmethod (setf iapropos-external-yes/no) :after (val (iapropos iapropos))
   (declare (ignore val))
   (%iapropos-update-matching-symbols iapropos))
 
-(defmethod (setf iapropos-bounded-to) :after (val (iapropos iapropos))
+(defmethod (setf iapropos-bound-to) :after (val (iapropos iapropos))
   (declare (ignore val))
   (%iapropos-update-matching-symbols iapropos))
 
-(defmethod (setf iapropos-external-only-p) :after (val (iapropos iapropos))
+(defmethod (setf iapropos-documentation-yes/no) :after (val (iapropos iapropos))
   (declare (ignore val))
   (%iapropos-update-matching-symbols iapropos))
 
@@ -122,9 +190,9 @@
 
 (defmethod %iapropos-update-matching-packages ((iapropos iapropos))
   (with-slots (cached-matching-packages package-apropos-text) iapropos
-    (if (not (and package-apropos-text (string/= package-apropos-text "")))
-	(setf cached-matching-packages (list-all-packages))
-	(setf cached-matching-packages 
+    (setf cached-matching-packages
+	  (if (not (and package-apropos-text (string/= package-apropos-text "")))
+	      (list-all-packages)
 	      (let ((scanner (cl-ppcre:create-scanner package-apropos-text :case-insensitive-mode t))
 		    (out))
 		(dolist (p (list-all-packages))
@@ -138,14 +206,13 @@
 	       cached-matching-symbols
 	       apropos-text
 	       max-result-length
-	       syntax-error
-	       result-overflow) iapropos
+	       result-overflow-p) iapropos
     (setf cached-matching-symbols
 	  (let ((swank::*buffer-package* (find-package :common-lisp-user))
 		(swank::*buffer-readtable* *readtable*)
 		(out)
 		(i 0))
-	    (setf result-overflow nil)
+	    (setf result-overflow-p nil)
 	    (block iter
 	      (with-package-iterator (next cached-matching-packages :external :internal)
 		(loop (multiple-value-bind (morep symbol) (next)
@@ -155,7 +222,7 @@
 			  (setf out (remove-duplicates out))
 			  (setf i (length out))
 			  (when (= i max-result-length)
-			    (setf result-overflow t)
+			    (setf result-overflow-p t)
 			    (return-from iter)))
 			(when (%iapropos-matching-symbol-p iapropos symbol)			      
 			  (push symbol out)
@@ -169,51 +236,32 @@
 ;;;
 
 (defun %iapropos-matching-symbol-p (iapropos symbol)
-  (with-slots (cached-apropos-scanner external-only-p bounded-to
+  (with-slots (cached-apropos-scanner external-yes/no documentation-yes/no bound-to
 	       subclass-of metaclass-of filter-fn) iapropos
     (and
-     (if external-only-p
-	 (symbol-external-p symbol)
+     (if external-yes/no
+	 (eq (not (symbol-external-p symbol))
+	     (eq external-yes/no :no))
 	 t)
-     (if bounded-to
-	 (ccase bounded-to
-	   (:variable
-	    (boundp symbol))
-	   (:function
-	    (fboundp symbol))
-	   (:macro
-	    (macro-function symbol))
-	   (:class
-	    (and (find-class symbol nil)
-		 (if subclass-of
-		     (subtypep symbol subclass-of)
-		     t)
-		 (if metaclass-of
-		     (subtypep (type-of (find-class symbol)) metaclass-of)
-		     t)))
-	   (:generic-function
-	    (and (fboundp symbol)
-		 (typep (symbol-function symbol) 'generic-function)))
-	   ((:setf :type)
-	    (not (eq (getf (swank/backend::describe-symbol-for-emacs symbol) bounded-to 'cl:t)
-		     t))))
+     (if bound-to
+	 (symbol-bound-to symbol bound-to)
+	 t)
+     (if (eq bound-to :class)
+	 (and
+	  (if subclass-of
+	      (subtypep symbol subclass-of)
+	      t)
+	  (if metaclass-of
+	      (subtypep (type-of (find-class symbol)) metaclass-of)
+	      t))
 	 t)
      (if filter-fn
 	 (funcall filter-fn symbol)
 	 t)
+     (if (and bound-to documentation-yes/no)
+	 (eq (not (symbol-documentation symbol bound-to))
+	     (eq documentation-yes/no :no))
+	 t)
      (if cached-apropos-scanner
 	 (cl-ppcre:scan cached-apropos-scanner (symbol-name symbol))
 	 t))))
-
-;;;
-;;; TODO
-;;;
-
-#|
-
-has-documentation-yes/no
-:yes :no nil
-
-external-yes/no
- :yes :no nil
-|#
