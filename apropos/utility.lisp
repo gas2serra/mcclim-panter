@@ -55,7 +55,7 @@
 (defun symbol-object (symbol type)
   (ccase type
     (:variable
-     (symbol-value-symbol))
+     (symbol-value symbol))
     (:function
      (symbol-function symbol))
     (:macro
@@ -65,6 +65,7 @@
     (:generic-function
      (symbol-function symbol))
     ((:setf :type)
+     nil
      )))
 
 (defun symbol-location (symbol type)
