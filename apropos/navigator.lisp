@@ -23,13 +23,20 @@
 			    :value-changed-callback '%update-matching-symbols)
    (package-regex-text-field :text-field
 			     :value-changed-callback '%update-matching-packages)
-   (result-display :application
-		   :incremental-redisplay t
-		   :display-function '%render-result
-		   :scroll-bars :vertical
-		   :end-of-line-action :allow
-		   :end-of-page-action :allow
-		   :min-width 600)
+   (symbol-result-display :application
+			  :incremental-redisplay t
+			  :display-function '%render-symbol-result
+			  :scroll-bars :vertical
+			  :end-of-line-action :allow
+			  :end-of-page-action :allow
+			  :min-width 300)
+   (package-result-display :application
+			  :incremental-redisplay t
+			  :display-function '%render-package-result
+			  :scroll-bars :vertical
+			  :end-of-line-action :allow
+			  :end-of-page-action :allow
+			  :min-width 300)
    (output-display :application
 		   :incremental-redisplay t
 		   :display-function '%render-output
@@ -110,7 +117,9 @@
 	   (2/3 (clim:labelling (:label "Results")
 		  (clim:vertically nil
 		    result-options
-		    result-display)))
+		    (clim:horizontally nil
+		      package-result-display
+		      symbol-result-display))))
 	   (1/3 (clim:labelling (:label "Output")
 		  (clim:vertically nil
 		    output-option
@@ -218,8 +227,11 @@
 
 (defun %maybe-update-result-display (&rest _)
   (declare (ignore _))
-  (anaphora:awhen (clim:find-pane-named clim:*application-frame* 'result-display)
-		  (clim:redisplay-frame-pane clim:*application-frame* anaphora:it :force-p t)))
+  (anaphora:awhen (clim:find-pane-named clim:*application-frame* 'package-result-display)
+    (clim:redisplay-frame-pane clim:*application-frame* anaphora:it :force-p t))
+  (anaphora:awhen (clim:find-pane-named clim:*application-frame* 'symbol-result-display)
+    (clim:redisplay-frame-pane clim:*application-frame* anaphora:it :force-p t)))
+
 
 (defun %maybe-update-output-display (&rest _)
   (declare (ignore _))
@@ -288,7 +300,8 @@
 		    (when (symbol-bound-to (car return-values) type)
 		      (print-symbol (car return-values) type selected-output-option)))))))))
 
-(defun %render-result (frame pane)
+(defun %render-symbol-result (frame pane)
+  (declare (ignore frame))
   (with-slots (iapropos syntax-error)
       clim:*application-frame*
     (when syntax-error
@@ -297,38 +310,50 @@
 	  (format pane "Error encountered while trying to update apropos display~2%~A~2%Inspect ~S for more info" 
 		  syntax-error
 		  'syntax-error)))
-      (return-from %render-result))
-    
-    (let* ((pane (clim:find-pane-named frame 'result-display))
-	   (matching-symbols (iapropos-matching-symbols iapropos))
-	   (matching-packages (iapropos-matching-packages iapropos))
-	   (symbols-x-offset 300))
+      (return-from %render-symbol-result))
+    (let* ((matching-symbols (iapropos-matching-symbols iapropos)))
+      (labels ((matching-symbols-column ()
+		 (let ((symbols-to-print (take 400 matching-symbols)))
+		   (setf (clim:stream-cursor-position pane) (values 10 5))
+		   (%print-heading-text pane
+					(format nil "Symbols (~A/~A~A)"
+						(length symbols-to-print)
+						(length matching-symbols)
+						(if (iapropos-result-overflow-p iapropos) "*" "")))
+		   (progn (clim:stream-increment-cursor-position pane 0 -8)
+			  (dolist (sym symbols-to-print)
+			    (fresh-line pane)
+			    (clim:stream-increment-cursor-position pane 10 0)
+			    (let ((*print-escape* t))
+			      (clim:present sym 'symbol :stream pane)))))))
+	(if (null matching-symbols)
+	    (%print-text pane "; no results")
+	    (matching-symbols-column))))))
+
+(defun %render-package-result (frame pane)
+  (declare (ignore frame))
+  (with-slots (iapropos syntax-error)
+      clim:*application-frame*
+    (when syntax-error
+      (clim:with-drawing-options (pane :ink clim:+red+ :text-size 16)
+	(let* ((*package* (find-package 'keyword)))
+	  (format pane "Error encountered while trying to update apropos display~2%~A~2%Inspect ~S for more info" 
+		  syntax-error
+		  'syntax-error)))
+      (return-from %render-package-result))
+    (let* ((matching-packages (iapropos-matching-packages iapropos)))
       (labels ((matching-packages-column ()
 		 (setf (clim:stream-cursor-position pane) (values 10 5))
 		 (%print-heading-text pane (format nil "Packages (~A)" (length matching-packages)))
 		 (dolist (package matching-packages)
 		   (fresh-line pane)
 		   (clim:stream-increment-cursor-position pane 10 0)
-		   (princ (package-name package) pane)))
-	       (matching-symbols-column ()
-		 (let ((symbols-to-print (take 400 matching-symbols)))
-		   (setf (clim:stream-cursor-position pane) (values symbols-x-offset 5))
-		   (%print-heading-text pane
-					(format nil "Symbols (~A/~A~A)"
-						(length symbols-to-print)
-						(length matching-symbols)
-						(if (iapropos-result-overflow-p iapropos) "*" ""))
-					symbols-x-offset)
-		   (progn (clim:stream-increment-cursor-position pane 0 -8)
-			  (dolist (sym symbols-to-print)
-			    (fresh-line pane)
-			    (clim:stream-increment-cursor-position pane symbols-x-offset 0)
-			    (clim:present sym 'symbol :stream pane))))))
-	(if (and (null matching-packages) (null matching-symbols))
-	    (progn 
-		   (%print-text pane "; no results"))
-	    (progn (matching-packages-column)
-		   (matching-symbols-column)))))))
+		   (princ (package-name package) pane))))
+	(if (null matching-packages)
+	    (%print-text pane "; no results")
+	    (matching-packages-column))))))
+	
+
 
 ;;;
 ;;; exit
