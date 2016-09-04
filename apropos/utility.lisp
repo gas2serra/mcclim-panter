@@ -52,6 +52,42 @@
 	nil
 	doc)))
 
+(defun symbol-object (symbol type)
+  (ccase type
+    (:variable
+     (symbol-value-symbol))
+    (:function
+     (symbol-function symbol))
+    (:macro
+     (macro-function symbol))
+    (:class
+     (find-class symbol))
+    (:generic-function
+     (symbol-function symbol))
+    ((:setf :type)
+     )))
+
+(defun symbol-location (symbol type)
+  (let ((definitions (swank::find-definitions symbol)))
+    (ccase type
+      (:variable
+       (symbol-value symbol))
+      (:function
+       (cdr (find-if #'(lambda (x) (eq 'defun (caar x))) (swank::find-definitions 'cl:cons))))
+      (:macro
+       (macro-function symbol))
+      (:class
+       (find-class symbol))
+      (:generic-function
+       (symbol-function symbol))
+      (:setf
+       nil)
+      (:type
+       (car (find-if #'(lambda (x) (eq 'deftype (caar x))) (swank::find-definitions 'cl:cons))))
+       )))
+      
+
+
 (defun symbol-description (symbol type)
   (with-output-to-string (*standard-output*)
     (case type
@@ -71,3 +107,38 @@
       (:type
        #+sbcl (describe (sb-kernel:values-specifier-type symbol))
        #+ccl (describe (or (find-class symbol nil) symbol))))))
+
+;;;
+;;; TODO
+;;;
+
+
+;;; source location
+#|
+(swank/backend:find-source-location (find-class 'mcclim-panter-apropos::iapropos))
+(:LOCATION
+ (:FILE "/home/gas/Projects/CL/my/mcclim-panter/apropos/iapropos.lisp")
+ (:POSITION 186)
+ (:SNIPPET "(defclass iapropos ()
+  ((apropos-text :initform nil
+		 :accessor iapropos-text)
+   (cached-apropos-scanner :initform nil)
+   (package-apropos-text :initform \"\"
+			 :accessor iapropos-package-text)
+   (external-yes/no :type '(member nil :yes :no)
+		    :in"))
+
+(swank/backend:find-source-location (symbol-function 'mcclim-panter-apropos::symbol-documentation))
+(:LOCATION
+ (:FILE "/home/gas/Projects/CL/my/mcclim-panter/apropos/utility.lisp")
+ (:POSITION 904)
+ (:SNIPPET "(defun symbol-documentation (symbol type)
+  (let ((doc (getf (swank/backend::describe-symbol-for-emacs symbol)
+		   (case type
+		     (:class
+		      :type)
+		     (:generic-function
+		      #+sbcl :generic-function
+		      #+ccl :function)
+		     (otherwi"))
+|#

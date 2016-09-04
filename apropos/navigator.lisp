@@ -14,6 +14,8 @@
 (clim:define-application-frame navigator ()
   ((return-values :initform nil)
    (syntax-error :initform nil)
+   (selected-result-options :initform '(:fully-qualified))
+   (selected-output-options :initform '(:selection))
    (iapropos :initform (make-instance 'iapropos)))
   (:menu-bar nil)
   (:panes (package-apropos-text-field :text-field
@@ -26,16 +28,17 @@
 			   :scroll-bars :vertical
 			   :end-of-page-action :allow
 			   :min-width 600)
-	  (documentation-display :application
+	  (output-display :application
 				 :incremental-redisplay t
-				 :display-function 'render-documentation
+				 :display-function 'render-output
 				 :scroll-bars :vertical
 				 :end-of-page-action :allow
 				 :min-width 600)
-	  (fully-qualified-symbols-radio
-	   (clim:with-radio-box (:orientation :horizontal :value-changed-callback '%maybe-update-apropos-display)
-	     (clim:radio-box-current-selection "t")
-	     "nil"))
+	  (result-options
+	   (clim:with-radio-box (:type :some-of
+				       :orientation :horizontal
+				       :value-changed-callback '%update-result-options)
+	     (clim:radio-box-current-selection "fully-qualified")))
 	  (external-radio
 	   (clim:with-radio-box (:orientation :horizontal :value-changed-callback '%update-external)
 	     "yes"
@@ -74,17 +77,20 @@
 			   :value-changed-callback #'%update-subclass-option)
 	  (metaclass-option :option-pane
 			    :value nil
-			    :items (list nil 'climi::presentation-type-class)
+			    ;;:items (list nil 'climi::presentation-type-class)
+			    :items (list nil)
 			    :value-changed-callback #'%update-metaclass-option)
-	  )
+	  (output-options
+	   (clim:with-radio-box (:type :some-of
+				 :orientation :horizontal
+				 :value-changed-callback '%update-output-options)
+	     (clim:radio-box-current-selection "selection")
+	     "documentation" "location" "description" "object")))
   (:layouts
    (:default
        (clim:vertically nil
 	 (clim:horizontally nil
 	   (clim:vertically nil
-	     (clim:labelling (:label "Print")	       
-	       (clim:labelling (:label "fully qualified?")
-		 fully-qualified-symbols-radio))
 	     (clim:labelling (:label "Symbol")
 	       (clim:vertically nil
 		 (clim:labelling (:label "bound to")
@@ -105,10 +111,14 @@
 		 return-symbols-button
 		 return-packages-button)))
 	   (clim:vertically nil
-	     (2/3 (clim:labelling (:label "Results")	       
-		    apropos-display))
-	     (1/3 (clim:labelling (:label "Description")
-		    documentation-display))
+	     (2/3 (clim:labelling (:label "Results")
+		    (clim:vertically nil
+		      result-options
+		      apropos-display)))
+	     (1/3 (clim:labelling (:label "Output")
+		    (clim:vertically nil
+		      output-options
+		      output-display)))
 	     (clim:vertically nil
 	       (clim:labelling (:label "symbol apropos" :align-x :center)
 		 apropos-text-field)
@@ -196,14 +206,34 @@
 	  selected-value))
   (%maybe-update-apropos-display))
 
+(defun %update-output-options (this-gadget selected-gadgets)
+  (declare (ignore this-gadget))
+  (with-slots (selected-output-options) clim:*application-frame*
+    (setf selected-output-options nil)
+    (dolist (sg  selected-gadgets)
+      (push 
+       (intern (string-upcase (clim:gadget-label sg)) :keyword)
+       selected-output-options)))
+  (%maybe-update-output-display))
+
+(defun %update-result-options (this-gadget selected-gadgets)
+  (declare (ignore this-gadget))
+  (with-slots (selected-result-options) clim:*application-frame*
+    (setf selected-result-options nil)
+    (dolist (sg selected-gadgets)
+      (push 
+       (intern (string-upcase (clim:gadget-label sg)) :keyword)
+       selected-result-options)))
+  (%maybe-update-apropos-display))
+
 (defun %maybe-update-apropos-display (&rest _)
   (declare (ignore _))
   (anaphora:awhen (clim:find-pane-named clim:*application-frame* 'apropos-display)
 		  (clim:redisplay-frame-pane clim:*application-frame* anaphora:it :force-p t)))
 
-(defun %maybe-update-documentation-display (&rest _)
+(defun %maybe-update-output-display (&rest _)
   (declare (ignore _))
-  (anaphora:awhen (clim:find-pane-named clim:*application-frame* 'documentation-display)
+  (anaphora:awhen (clim:find-pane-named clim:*application-frame* 'output-display)
 		  (clim:redisplay-frame-pane clim:*application-frame* anaphora:it :force-p t)))
 
 
@@ -214,18 +244,35 @@
 (defun take (n l)
   (subseq l 0 (if (< (length l) n) (if (> n (1- (length l))) (length l) (1- (length l))) n)))
 
-(defun render-documentation (frame pane)
-  (with-slots (return-values iapropos) clim:*application-frame*
+(defun render-output (frame pane)
+  (with-slots (return-values selected-output-options iapropos) clim:*application-frame*
     (setf (clim:stream-cursor-position pane) (values 10 10))
     (when return-values
-      (format pane "Selected symbols~%-----~%~A~%~%" return-values)
-      (fresh-line pane)
-      (clim:stream-increment-cursor-position pane 10 0)
-      (format pane "Documentation~%-----~%~A~%~%"
-	      (symbol-documentation (car return-values) (iapropos-bound-to iapropos)))
-      (fresh-line pane)
-      (format pane "Description~%-----~%~A~%~%"
-	      (symbol-description (car return-values) (iapropos-bound-to iapropos))))))
+      (dolist (s selected-output-options)
+	(ccase s
+	  (:selection
+	   (format pane "Selected symbols~%-----~%~A~%~%" return-values))
+	  (:object
+	   (when (iapropos-bound-to iapropos)
+	     (fresh-line pane)
+	     (clim:stream-increment-cursor-position pane 10 0)
+	     (format pane "Object~%-----~%~A~%~%"
+		     (symbol-object (car return-values) (iapropos-bound-to iapropos)))))
+	  (:location
+	   (when (iapropos-bound-to iapropos)
+	     (fresh-line pane)
+	     (clim:stream-increment-cursor-position pane 10 0)
+	     (format pane "Location~%-----~%~A~%~%"
+		     (symbol-location (car return-values) (iapropos-bound-to iapropos)))))
+	  (:documentation
+	   (fresh-line pane)
+	   (clim:stream-increment-cursor-position pane 10 0)
+	   (format pane "Documentation~%-----~%~A~%~%"
+		   (symbol-documentation (car return-values) (iapropos-bound-to iapropos))))
+	  (:description
+	   (fresh-line pane)
+	   (format pane "Description~%-----~%~A~%~%"
+		   (symbol-description (car return-values) (iapropos-bound-to iapropos)))))))))
 
 (defun render-apropos (frame pane)
   ;; TODO
@@ -319,7 +366,7 @@
     ((sym 'symbol :gesture :select))
   (with-slots (return-values) clim:*application-frame*
     (push sym return-values))
-  (%maybe-update-documentation-display))
+  (%maybe-update-output-display))
 
 ;;;
 ;;; run
@@ -373,4 +420,38 @@
   ;;(ANAPHORA:AIF (STUMPWM::WINDOW-BY-NAME "NAVIGATOR") (STUMPWM:SELECT-WINDOW (STUMPWM::WINDOW-NAME ANAPHORA:IT))
   ;;              (BORDEAUX-THREADS:MAKE-THREAD 'RUN-NAVIGATOR :NAME "NAVIGATOR")))
   )
+
+
+ (swank:find-source-location-for-emacs '(:inspector "cons"))
+(swank:find-definitions-for-emacs "cl:cons")
+(("(DEFTYPE CONS)"
+  (:LOCATION
+   (:FILE
+    "/home/csr21/src/lisp/sbcl-release-dir-20160830-dY7abU0Va/sbcl-1.3.9/src/compiler/generic/objdef.lisp")
+   (:POSITION 1) NIL))
+ ("(DEFUN CONS)"
+  (:LOCATION
+   (:FILE
+    "/home/csr21/src/lisp/sbcl-release-dir-20160830-dY7abU0Va/sbcl-1.3.9/src/code/list.lisp")
+   (:POSITION 1) (:SNIPPET "(defun CONS ")))
+ ("(DEFCLASS CONS)"
+  (:ERROR
+   "Error: DEFINITION-SOURCE of class CONS did not contain meaningful information."))
+ ("(:DEFOPTIMIZER CONS SB-C:IR2-CONVERT)"
+  (:LOCATION
+   (:FILE
+    "/home/csr21/src/lisp/sbcl-release-dir-20160830-dY7abU0Va/sbcl-1.3.9/src/compiler/fun-info-funs.lisp")
+   (:POSITION 1) NIL))
+ ("(:DEFOPTIMIZER CONS SB-C::STACK-ALLOCATE-RESULT)"
+  (:LOCATION
+   (:FILE
+    "/home/csr21/src/lisp/sbcl-release-dir-20160830-dY7abU0Va/sbcl-1.3.9/src/compiler/generic/vm-ir2tran.lisp")
+   (:POSITION 1) NIL))
+ ("(DECLAIM CONS
+         SB-C:DEFKNOWN)"
+  (:LOCATION
+   (:FILE
+    "/home/csr21/src/lisp/sbcl-release-dir-20160830-dY7abU0Va/sbcl-1.3.9/src/compiler/fndb.lisp")
+   (:POSITION 1) NIL)))
+CL-USER> 
 |#
