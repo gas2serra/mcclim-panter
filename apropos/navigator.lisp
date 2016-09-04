@@ -108,27 +108,28 @@
 		 subclass-option)
 	       (clim:labelling (:label "metaclass of")
 		 metaclass-option)))
-	   (clim:labelling (:label "Quit and return")
-	     (clim:vertically nil
-	       return-selected-symbols-button
-	       return-symbols-button
-	       return-packages-button)))
-	 (clim:vertically nil
-	   (2/3 (clim:labelling (:label "Results")
-		  (clim:vertically nil
-		    result-options
-		    (clim:horizontally nil
-		      package-result-display
-		      symbol-result-display))))
-	   (1/3 (clim:labelling (:label "Output")
-		  (clim:vertically nil
-		    output-option
-		    output-display)))
-	   (clim:vertically nil
-	     (clim:labelling (:label "symbol apropos" :align-x :center)
-	       symbol-regex-text-field)
-	     (clim:labelling (:label "package apropos" :align-x :center)
-	       package-regex-text-field)))))))
+	   (clim:+fill+ (clim:labelling (:label "Quit and return")
+			  (clim:vertically nil
+			    return-selected-symbols-button
+			    return-symbols-button
+			    return-packages-button))))
+	 (clim:+fill+
+	  (clim:vertically nil
+	    (2/3 (clim:labelling (:label "Results")
+		   (clim:vertically nil
+		     result-options
+		     (clim:horizontally nil
+		       package-result-display
+		       symbol-result-display))))
+	    (1/3 (clim:labelling (:label "Output")
+		   (clim:vertically nil
+		     output-option
+		     output-display)))
+	    (clim:vertically nil
+	      (clim:labelling (:label "symbol apropos" :align-x :center)
+		symbol-regex-text-field)
+	      (clim:labelling (:label "package apropos" :align-x :center)
+		package-regex-text-field))))))))
 
 ;;;
 ;;; callbacks
@@ -324,8 +325,7 @@
 			  (dolist (sym symbols-to-print)
 			    (fresh-line pane)
 			    (clim:stream-increment-cursor-position pane 10 0)
-			    (let ((*print-escape* t))
-			      (clim:present sym 'symbol :stream pane)))))))
+			    (clim:present sym 'symbol :stream pane))))))
 	(if (null matching-symbols)
 	    (%print-text pane "; no results")
 	    (matching-symbols-column))))))
@@ -348,6 +348,7 @@
 		 (dolist (package matching-packages)
 		   (fresh-line pane)
 		   (clim:stream-increment-cursor-position pane 10 0)
+		   ;;(clim:present package 'package :stream pane))))
 		   (princ (package-name package) pane))))
 	(if (null matching-packages)
 	    (%print-text pane "; no results")
