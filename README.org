@@ -1,4 +1,4 @@
-* Mcclim-Panter  - Debugging utility
+* Mcclim-Panter - McClim Developer Suite
 
 ** Apps
 - Apropos Navigator
