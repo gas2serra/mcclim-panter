@@ -12,10 +12,10 @@
 (defvar *return-values* nil)
 
 (clim:define-application-frame apropos-navigator ()
-  ((return-values :initform nil)
+  ((selected-values :initform nil)
    (selected-result-options :initform '(:fully-qualified))
    (selected-output-option :initform ':selection)
-   (selected-action-option :initform ':last-selected)
+   (selected-action-option :initform ':single)
    (iapropos :initform (make-instance 'iapropos)))
   (:menu-bar nil)
   (:panes
@@ -74,16 +74,27 @@
       "setf" "type"))
    (subclass-option :option-pane
 		    :value nil
+		    :active nil
 		    :items (list nil 'clim:pane 'clim:application-frame)
 		    :value-changed-callback #'%update-subclass-option)
    (metaclass-option :option-pane
 		     :value nil
+		     :active nil
 		     :items (list nil 'climi::presentation-type-class)
 		     :value-changed-callback #'%update-metaclass-option)
+   (filter-option :option-pane
+		  :value nil
+		  :items (list
+			  (cons "nil" nil)
+			  (cons "pippo"
+				     #'(lambda (sym) t)))
+		  :name-key #'car
+		  :value-key #'cdr
+		  :value-changed-callback #'%update-filter-option)
    (action-option
     (clim:with-radio-box (:orientation :vertical
 				       :value-changed-callback '%update-action-option)
-      (clim:radio-box-current-selection "last-selected") "all-selected" "all-matched"))
+      (clim:radio-box-current-selection "single") "multiple"))
    (return-action :push-button
 		  :activate-callback #'return-action
 		  :label "return")
@@ -94,8 +105,13 @@
 		     :activate-callback #'kill-ring-action
 		     :label "kill-ring")
    (clear-action :push-button
+		 :active nil
 		 :activate-callback #'clear-action
-		 :label "clear selection"))
+		 :label "clear selection")
+   (select-all-action :push-button
+		      :active nil
+		      :activate-callback #'select-all-action
+		      :label "select all"))
   (:layouts
    (:default
        (clim:horizontally nil
@@ -114,14 +130,17 @@
 		 subclass-option)
 	       (clim:labelling (:label "metaclass of")
 		 metaclass-option)))
+	   (clim:labelling (:label "Filter")
+	     filter-option)
+	   (clim:labelling (:label "Selection")
+	     action-option)
 	   (clim:+fill+ (clim:labelling (:label "Actions")
 			  (clim:vertically nil
 			    return-action
 			    copy-action
 			    kill-ring-action
-			    action-option
-			    clear-action
-			    ))))
+			    select-all-action
+			    clear-action))))
 	 (clim:+fill+
 	  (clim:vertically nil
 	    (2/3 (clim:labelling (:label "Results")
@@ -224,6 +243,13 @@
 	  selected-value))
   (%maybe-update-result-display))
 
+(defun %update-filter-option (this-gadget selected-value)
+  (declare (ignore this-gadget))
+  (with-slots (iapropos) clim:*application-frame*
+    (setf (iapropos-filter-fn iapropos) 
+	  selected-value))
+  (%maybe-update-result-display))
+
 (defun %update-output-option (this-gadget selected-gadget)
   (declare (ignore this-gadget))
   (with-slots (selected-output-option) clim:*application-frame*
@@ -243,9 +269,18 @@
 
 (defun %update-action-option (this-gadget selected-gadget)
   (declare (ignore this-gadget))
-  (with-slots (selected-action-option) clim:*application-frame*
+  (with-slots (selected-action-option selected-values) clim:*application-frame*
     (setf selected-action-option 
-	  (intern (string-upcase (clim:gadget-label selected-gadget)) :keyword))))
+	  (intern (string-upcase (clim:gadget-label selected-gadget)) :keyword))
+    (if (eq selected-action-option :single)
+	(progn
+	  (setf selected-values (when selected-values (list (car selected-values))))
+	  (clim:deactivate-gadget (clim:find-pane-named clim:*application-frame* 'clear-action))
+	  (clim:deactivate-gadget (clim:find-pane-named clim:*application-frame* 'select-all-action)))
+	(progn
+	  (clim:activate-gadget (clim:find-pane-named clim:*application-frame* 'clear-action))
+	  (clim:activate-gadget (clim:find-pane-named clim:*application-frame* 'select-all-action)))))
+  (%maybe-update-output-display))
 
 (defun %maybe-update-result-display (&rest _)
   (declare (ignore _))
@@ -292,46 +327,47 @@
 
 (defun %render-output (frame pane)
   (declare (ignore frame))
-  (with-slots (return-values selected-output-option iapropos) clim:*application-frame*
+  (with-slots (selected-values selected-output-option iapropos) clim:*application-frame*
     (flet ((print-symbol (sym type opt)
 	     (ccase opt
 	       (:selection
 		(%print-heading-text pane (format nil "Selected symbols"))
 		(let ((*print-escape* t))
-		  (dolist (v return-values)
+		  (dolist (v selected-values)
 		    (%print-text pane (format nil "~S~%" v)))))
 	       (:object
 		(%print-heading-text pane (format nil "Object (~A)" type))
 		(%print-text pane (symbol-object sym type)))
 	       (:location
 		(%print-heading-text pane (format nil "Location (~A)" type))
-		(%print-text pane (symbol-location (car return-values) type)))
+		(%print-text pane (symbol-location (car selected-values) type)))
 	       (:documentation
 		(%print-heading-text pane (format nil "Documentation (~A)" type))
-		(%print-text pane (symbol-documentation (car return-values) type)))
+		(%print-text pane (symbol-documentation (car selected-values) type)))
 	       (:description
 		(%print-heading-text pane (format nil "Description (~A)" type))
-		(%print-text pane (symbol-description (car return-values) type))))
+		(%print-text pane (symbol-description (car selected-values) type))))
 	     ;;(princ #\Newline pane)
 	     ;;(fresh-line pane)
 	     (clim:stream-increment-cursor-position pane 0 5)
 	     ))
       ;;(setf (clim:stream-cursor-position pane) (values 10 10))     
-      (if (null return-values)
+      (if (null selected-values)
 	  (%print-heading-text pane (format nil "Empty selection"))
-	  (progn
-	    (let ((*print-escape* t))
-	      (%print-heading-text pane (format nil "~S" (car return-values))))
-	    (if (iapropos-bound-to iapropos) 
-		(print-symbol (car return-values) (iapropos-bound-to iapropos) selected-output-option)
-		(if (eq selected-output-option :selection)
-		    (print-symbol (car return-values) nil selected-output-option)
+	  (if (eq selected-output-option :selection)
+	      (print-symbol selected-values nil selected-output-option)
+	      (dolist (sym selected-values)
+		(let ((*print-escape* t))
+		  (%print-heading-text pane (format nil "~S" sym)))
+		(if (iapropos-bound-to iapropos) 
+		    (print-symbol sym
+				  (iapropos-bound-to iapropos) selected-output-option)
 		    (dolist (type *symbol-bounding-types*)
-		      (when (symbol-bound-to (car return-values) type)
-			(print-symbol (car return-values) type selected-output-option))))))))))
+		      (when (symbol-bound-to (car selected-values) type)
+			(print-symbol (car selected-values) type selected-output-option))))))))))
 
 (defun %render-symbol-result (frame pane)
-  (with-slots (iapropos return-values)
+  (with-slots (iapropos selected-values)
       clim:*application-frame*
     (let* ((matching-symbols (iapropos-matching-symbols iapropos))
 	   (symbols-to-print (take 400 matching-symbols)))
@@ -349,7 +385,7 @@
 	    (fresh-line pane)
 	    (clim:stream-increment-cursor-position pane 10 0)
 	    (clim:with-drawing-options (pane :ink
-					     (if (member sym return-values)
+					     (if (member sym selected-values)
 						 clim:+blue+
 						 clim:+black+))
 	      (clim:present sym 'symbol :stream pane)))))))
@@ -374,38 +410,42 @@
 ;;; actions
 ;;;
 
-(defun %update-return-values ()
-  (with-slots (return-values selected-action-option iapropos) clim:*application-frame*
+(defun %update-selected-values ()
+  (with-slots (selected-values selected-action-option iapropos) clim:*application-frame*
     (setf *return-values*
 	  (ccase selected-action-option
-	    (:last-selected
-	     (car return-values))
-	    (:all-selected
-	     (remove-duplicates return-values))
-	    (:all-matched
-	     (iapropos-matching-symbols iapropos))))))
+	    (:single
+	     (car selected-values))
+	    (:multiple
+	     (remove-duplicates selected-values))))))
 
 (defun return-action (this-gadget)
   (declare (ignore this-gadget))
-  (%update-return-values)
+  (%update-selected-values)
   (clim:frame-exit clim:*application-frame*))
 
 (defun copy-action (this-gadget)
   (declare (ignore this-gadget))
-  (%update-return-values)
+  (%update-selected-values)
   (with-input-from-string (input-stream (format nil "~S" *return-values*))
     (uiop:run-program "xclip -selection clipboard -i " :output nil :input input-stream)))
 
 (defun kill-ring-action (this-gadget)
   (declare (ignore this-gadget))
-  (%update-return-values)
+  (%update-selected-values)
   (drei-kill-ring:kill-ring-standard-push drei-kill-ring:*kill-ring*
 					  (format nil "~A" *return-values*)))
 
 (defun clear-action (this-gadget)
   (declare (ignore this-gadget))
-  (with-slots (return-values) clim:*application-frame*
-    (setf return-values nil))
+  (with-slots (selected-values) clim:*application-frame*
+    (setf selected-values nil))
+  (%maybe-update-output-display))
+
+(defun select-all-action (this-gadget)
+  (declare (ignore this-gadget))
+  (with-slots (selected-values iapropos) clim:*application-frame*
+    (setf selected-values (iapropos-matching-symbols iapropos)))
   (%maybe-update-output-display))
 
 
@@ -413,20 +453,22 @@
 ;;; commands
 ;;;
 
-(define-apropos-navigator-command (com-quit-and-return-values :menu t
+(define-apropos-navigator-command (com-quit-and-selected-values :menu t
 						      :name t
 						      :keystroke ((:meta #\q)))
     ()
-  (with-slots (return-values) clim:*application-frame*
-    (setf *return-values* (remove-duplicates return-values))
+  (with-slots (selected-values) clim:*application-frame*
+    (setf *return-values* (remove-duplicates selected-values))
     (clim:frame-exit clim:*application-frame*)))
 
 (define-apropos-navigator-command (com-select-symbol-for-return :name t)
     ((sym 'symbol :gesture :select))
-  (with-slots (return-values) clim:*application-frame*
-    (if (member sym return-values)
-	(setf return-values (remove sym return-values))
-	(setf return-values (remove-duplicates (push sym return-values)))))
+  (with-slots (selected-values selected-action-option) clim:*application-frame*
+    (if (eq selected-action-option :single)
+	(setf selected-values (list sym))
+	(if (member sym selected-values)
+	    (setf selected-values (remove sym selected-values))
+	    (setf selected-values (remove-duplicates (push sym selected-values))))))
   ;;(%maybe-update-result-display)
   (%maybe-update-output-display))
 
@@ -459,7 +501,7 @@
                  :name t 
                  :command-table drei-lisp-syntax::lisp-table) ()
   (setf return-point (climacs-gui::point)
-        climi::return-values nil)
+        climi::selected-values nil)
   (flexichain:insert-sequence climacs-gui::return-point (write-to-string
 							 (climi::run-apropos-navigator))))
 
