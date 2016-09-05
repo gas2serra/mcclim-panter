@@ -5,10 +5,6 @@
 
 (in-package :mcclim-panter-apropos)
 
-(defparameter *apropos-navigator-heading-text-style* (clim:make-text-style
-						     nil
-						     :bold 12))
-
 (defvar *return-values* nil)
 
 (clim:define-application-frame apropos-navigator ()
@@ -38,7 +34,8 @@
 			  :scroll-bars :vertical
 			  :end-of-line-action :allow
 			  :end-of-page-action :allow
-			  :min-width 300)
+			  :min-width 300
+			  :max-width 500)
    (output-display :application
 		   :incremental-redisplay t
 		   :display-function '%render-output
@@ -75,19 +72,20 @@
    (subclass-option :option-pane
 		    :value nil
 		    :active nil
-		    :items (list nil 'clim:pane 'clim:application-frame)
+		    :items *apropos-navigator-subclas-of-options*
+		    :name-key #'car
+		    :value-key #'cdr	    
 		    :value-changed-callback #'%update-subclass-option)
    (metaclass-option :option-pane
 		     :value nil
 		     :active nil
-		     :items (list nil 'climi::presentation-type-class)
+		     :items *apropos-navigator-metaclas-of-options*
+		     :name-key #'car
+		     :value-key #'cdr	
 		     :value-changed-callback #'%update-metaclass-option)
    (filter-option :option-pane
 		  :value nil
-		  :items (list
-			  (cons "nil" nil)
-			  (cons "pippo"
-				     #'(lambda (sym) t)))
+		  :items *apropos-navigator-filter-options*
 		  :name-key #'car
 		  :value-key #'cdr
 		  :value-changed-callback #'%update-filter-option)
@@ -147,8 +145,8 @@
 		   (clim:vertically nil
 		     result-options
 		     (clim:horizontally nil
-		       package-result-display
-		       symbol-result-display))))
+		       (1/2 package-result-display)
+		       (1/2 symbol-result-display)))))
 	    (1/3 (clim:labelling (:label "Output")
 		   (clim:vertically nil
 		     output-option
@@ -362,9 +360,8 @@
 		(if (iapropos-bound-to iapropos) 
 		    (print-symbol sym
 				  (iapropos-bound-to iapropos) selected-output-option)
-		    (dolist (type *symbol-bounding-types*)
-		      (when (symbol-bound-to (car selected-values) type)
-			(print-symbol (car selected-values) type selected-output-option))))))))))
+		    (dolist (type (list-symbol-bounding-types sym))
+		      (print-symbol sym type selected-output-option)))))))))
 
 (defun %render-symbol-result (frame pane)
   (with-slots (iapropos selected-values)

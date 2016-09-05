@@ -33,10 +33,15 @@
 	      t)))))
 
 (defun list-symbol-bounding-types (symbol)
-  (remove-if #'(lambda (type)
-		 (not (symbol-bound-to symbol type)))
-	     *symbol-bounding-types*))
-
+  (let ((types (remove-if #'(lambda (type)
+			      (not (symbol-bound-to symbol type)))
+			  *symbol-bounding-types*)))
+    (cond
+      ((member :generic-function types)
+       (remove :function types))
+      (t
+       types))))
+	
 (defun symbol-documentation (symbol type)
   (let ((doc (getf (swank/backend::describe-symbol-for-emacs symbol)
 		   (case type
@@ -44,6 +49,9 @@
 		      :type)
 		     (:generic-function
 		      #+sbcl :generic-function
+		      #+ccl :function)
+		     (:macro
+		      #+sbcl :macro
 		      #+ccl :function)
 		     (otherwise
 		      type))
@@ -64,31 +72,48 @@
      (find-class symbol))
     (:generic-function
      (symbol-function symbol))
-    ((:setf :type)
+    (:setf
+     #+sbcl (swank/sbcl::setf-expander symbol)
+     #+ccl nil)
+    (:type
      nil
      )))
 
 (defun symbol-location (symbol type)
   (let ((definitions (swank::find-definitions symbol)))
+    #+sbcl
     (ccase type
       (:variable
-       (symbol-value symbol))
+       (cdr (find-if #'(lambda (x) (eq 'defvar (caar x))) definitions)))
       (:function
-       (cdr (find-if #'(lambda (x) (eq 'defun (caar x))) (swank::find-definitions 'cl:cons))))
-      (:macro
-       (macro-function symbol))
-      (:class
-       (find-class symbol))
+       (cdr (find-if #'(lambda (x) (eq 'defun (caar x))) definitions)))
       (:generic-function
-       (symbol-function symbol))
+       (cdr (find-if #'(lambda (x) (eq 'defgeneric (caar x))) definitions)))
+      (:macro
+       (cdr (find-if #'(lambda (x) (eq 'defmacro (caar x))) definitions)))
+      (:class
+       (cdr (find-if #'(lambda (x) (eq 'defclass (caar x))) definitions)))
       (:setf
-       nil)
+       (cdr (find-if #'(lambda (x) (eq 'define-setf-expander (caar x))) definitions)))
       (:type
-       (car (find-if #'(lambda (x) (eq 'deftype (caar x))) (swank::find-definitions 'cl:cons))))
-       )))
+       (cdr (find-if #'(lambda (x) (eq 'defclass (caar x))) definitions))))
+    #+ccl
+    (ccase type
+      (:variable
+       (cdr (find-if #'(lambda (x) (eq 'variable (caar x))) definitions)))
+      (:function
+       (cdr (find-if #'(lambda (x) (eq 'defun (caar x))) definitions)))
+      (:generic-function
+       (cdr (find-if #'(lambda (x) (eq 'defgeneric (caar x))) definitions)))
+      (:macro
+       (cdr (find-if #'(lambda (x) (eq 'defmacro (caar x))) definitions)))
+      (:class
+       (cdr (find-if #'(lambda (x) (eq 'defclass (caar x))) definitions)))
+      (:setf
+       (cdr (find-if #'(lambda (x) (eq 'define-setf-expander (caar x))) definitions)))
+      (:type
+       (cdr (find-if #'(lambda (x) (eq 'defclass (caar x))) definitions))))))
       
-
-
 (defun symbol-description (symbol type)
   (with-output-to-string (*standard-output*)
     (case type
@@ -112,6 +137,18 @@
 ;;;
 ;;; TODO
 ;;;
+
+;;;
+;;; utility
+;;;
+
+(defun command-internals-symbol-p (symbol)
+  "XXX, If this were implemented properly, it would scan for one of the
+following strings: acceptor, partial or unparser. But since it is cheaper..
+Perhaps hotpatch define-command to throw if one feeds it a command name with %?"
+  (let* ((name (symbol-name symbol))
+         (scanner (cl-ppcre:create-scanner "^COM-" :case-insensitive-mode t)))
+    (and (cl-ppcre::scan scanner name) (cl-ppcre::scan #\% name))))
 
 
 ;;; source location
