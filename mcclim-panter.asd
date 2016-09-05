@@ -18,12 +18,15 @@
   :version "0.1"
   :author "Alessandro Serra"
   :license "GPLv3"
-  :depends-on (:mcclim-panter-apropos
+  :depends-on (:clim-listener
+	       :drei-mcclim
+	       :mcclim-panter-apropos
 	       :mcclim-panter-debugger
 	       :mcclim-panter-task-manager)
   :components ((:module "src"
 			:serial t
 			:components
 			((:file "mcclim-panter")
+			 (:file "drei-extension")
 			 (:file "listener-extension"))))
   :description "McClim Developer Suite")
