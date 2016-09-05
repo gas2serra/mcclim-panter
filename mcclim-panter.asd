@@ -24,5 +24,6 @@
   :components ((:module "src"
 			:serial t
 			:components
-			((:file "mcclim-panter"))))
+			((:file "mcclim-panter")
+			 (:file "listener-extension"))))
   :description "McClim Developer Suite")
