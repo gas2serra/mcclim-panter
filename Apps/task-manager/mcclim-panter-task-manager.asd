@@ -20,7 +20,7 @@
   :license "GPLv3"
   :depends-on (:mcclim)
   :components (
-	       (:module "task-manager"
+	       (:module "src"
 			:serial t
 			:components
 			((:file "mcclim-panter-task-manager")

@@ -20,7 +20,7 @@
   :license "GPLv3"
   :depends-on (:mcclim :clim-listener :cl-ppcre :anaphora :swank :closer-mop)
   :components (
-	       (:module "apropos"
+	       (:module "src"
 			:serial t
 			:components
 			((:file "mcclim-panter-apropos")

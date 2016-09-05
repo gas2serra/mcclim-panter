@@ -19,7 +19,7 @@
   :author "Alessandro Serra"
   :license "GPLv3"
   :depends-on (:mcclim :clim-listener :anaphora :clouseau)
-  :components ((:module "debugger"
+  :components ((:module "src"
 			:serial t
 			:components
 			((:file "mcclim-panter-debugger")
