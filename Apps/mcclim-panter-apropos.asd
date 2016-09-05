@@ -14,11 +14,11 @@
   (:use :cl :asdf))
 (in-package #:mcclim-panter-apropos-asd)
 
-(defsystem mcclim-panter-apropos
+(defsystem #:mcclim-panter-apropos
   :version "0.1"
   :author "Alessandro Serra"
   :license "GPLv3"
-  :depends-on (:mcclim :clim-listener :cl-panter :cl-ppcre :anaphora :swank :closer-mop)
+  :depends-on (:mcclim :clim-listener :cl-ppcre :anaphora :swank :closer-mop)
   :components (
 	       (:module "apropos"
 			:serial t
@@ -30,5 +30,3 @@
 			 (:file "navigator-parameters")
 			 (:file "navigator"))))
   :description "Apropos Navigator")
-
-

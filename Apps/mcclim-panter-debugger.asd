@@ -14,11 +14,11 @@
   (:use :cl :asdf))
 (in-package #:mcclim-panter-debugger-asd)
 
-(defsystem mcclim-panter-debugger
+(defsystem #:mcclim-panter-debugger
   :version "0.1"
   :author "Alessandro Serra"
   :license "GPLv3"
-  :depends-on (:mcclim :clim-listener :cl-panter :anaphora :clouseau)
+  :depends-on (:mcclim :clim-listener :anaphora :clouseau)
   :components ((:module "debugger"
 			:serial t
 			:components

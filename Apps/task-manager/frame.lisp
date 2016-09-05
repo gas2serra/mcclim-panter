@@ -1,15 +1,15 @@
-(in-package :mcclim-panter)
+(in-package :mcclim-panter-task-manager)
 
-(clim:define-application-frame panter (clim:standard-application-frame)
+(clim:define-application-frame task-manager (clim:standard-application-frame)
   ()
   (:panes
    (app :application :display-time nil)
    (doc :pointer-documentation) 
    (interact :interactor))
   (:command-table
-   (panter
-    :inherit-from (panter-commands)
-    :menu (("Panter" :menu panter-commands))))
+   (task-manager
+    :inherit-from (task-manager-commands)
+    :menu (("Tasks" :menu task-manager-commands))))
   (:menu-bar t)
   (:layouts (default
 		(clim:vertically ()
@@ -19,7 +19,7 @@
 
 
 (clim:define-command (com-quit :name "Quit"
-			       :command-table panter
+			       :command-table task-manager
 			       :menu t
 			       :provide-output-destination-keyword nil)
     ()

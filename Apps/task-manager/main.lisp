@@ -1,14 +1,14 @@
-(in-package :mcclim-panter)
+(in-package :mcclim-panter-task-manager)
 
-(defun run-panter (&key (new-process nil)
-		     (width 790)
-		     (height 550)
-		     port
-		     frame-manager
-		     (pretty-name "Panter")
-		     (process-name "panter"))
+(defun run-task-manager (&key (new-process nil)
+			   (width 790)
+			   (height 550)
+			   port
+			   frame-manager
+			   (pretty-name "Task Manager")
+			   (process-name "task-manager"))
   (let* ((fm (or frame-manager (clim:find-frame-manager :port (or port (clim:find-port)))))
-         (frame (clim:make-application-frame 'panter
+         (frame (clim:make-application-frame 'task-manager
 					     :pretty-name pretty-name
 					     :frame-manager fm
 					     :width width
