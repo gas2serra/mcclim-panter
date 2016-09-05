@@ -1,0 +1,17 @@
+* Task Manager (mcclim-panter)
+
+** Usage
+
+** Installation
+
+** Author
+
++ Alessandro Serra (gas2serra@gmail.com)
+
+** Copyright
+
+Copyright (c) 2016 Alessandro Serra (gas2serra@gmail.com)
+
+** License
+
+Licensed under the GPLv3 License.

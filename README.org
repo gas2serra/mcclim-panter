@@ -1,5 +1,13 @@
 * Mcclim-Panter  - Debugging utility
 
+** Apps
+- Apropos Navigator
+  [[file:Apps/apropos/README.org][link]]
+- Debugger
+  [[file:Apps/debugger/README.org][link]]
+- Task Manager
+  [[file:Apps/task-manager/README.org][link]]
+
 ** Usage
 
 ** Installation
