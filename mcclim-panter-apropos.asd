@@ -26,6 +26,8 @@
 			((:file "mcclim-panter-apropos")
 			 (:file "utility")
 			 (:file "iapropos")
+			 (:file "presentations")
+			 (:file "navigator-parameters")
 			 (:file "navigator"))))
   :description "Apropos Navigator")
 

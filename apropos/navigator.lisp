@@ -12,6 +12,7 @@
    (selected-result-options :initform '(:fully-qualified))
    (selected-output-option :initform ':selection)
    (selected-action-option :initform ':single)
+   (symbol-view :initform +fully-qualified-symbol-view+)
    (iapropos :initform (make-instance 'iapropos)))
   (:menu-bar nil)
   (:panes
@@ -257,12 +258,15 @@
 
 (defun %update-result-options (this-gadget selected-gadgets)
   (declare (ignore this-gadget))
-  (with-slots (selected-result-options) clim:*application-frame*
+  (with-slots (selected-result-options symbol-view) clim:*application-frame*
     (setf selected-result-options nil)
     (dolist (sg selected-gadgets)
       (push 
        (intern (string-upcase (clim:gadget-label sg)) :keyword)
-       selected-result-options)))
+       selected-result-options))
+    (if (member :fully-qualified selected-result-options)
+	(setf symbol-view +fully-qualified-symbol-view+)
+	(setf symbol-view clim:+textual-view+)))
   (%maybe-update-result-display))
 
 (defun %update-action-option (this-gadget selected-gadget)
@@ -332,10 +336,15 @@
 		(%print-heading-text pane (format nil "Selected symbols"))
 		(let ((*print-escape* t))
 		  (dolist (v selected-values)
-		    (%print-text pane (format nil "~S~%" v)))))
+		    (fresh-line pane)
+		    (clim:stream-increment-cursor-position pane 10 0)
+		    (clim:present v 'symbol :stream pane :view +fully-qualified-symbol-view+))))
 	       (:object
 		(%print-heading-text pane (format nil "Object (~A)" type))
-		(%print-text pane (symbol-object sym type)))
+		(fresh-line pane)
+		(clim:stream-increment-cursor-position pane 10 0)
+		(clim:present (symbol-object sym type) 'object
+			      :stream pane :view clim:+textual-view+))
 	       (:location
 		(%print-heading-text pane (format nil "Location (~A)" type))
 		(%print-text pane (symbol-location (car selected-values) type)))
@@ -364,7 +373,7 @@
 		      (print-symbol sym type selected-output-option)))))))))
 
 (defun %render-symbol-result (frame pane)
-  (with-slots (iapropos selected-values)
+  (with-slots (iapropos selected-values symbol-view)
       clim:*application-frame*
     (let* ((matching-symbols (iapropos-matching-symbols iapropos))
 	   (symbols-to-print (take 400 matching-symbols)))
@@ -385,7 +394,7 @@
 					     (if (member sym selected-values)
 						 clim:+blue+
 						 clim:+black+))
-	      (clim:present sym 'symbol :stream pane)))))))
+	      (clim:present sym 'symbol :stream pane :view symbol-view)))))))
 
 (defun %render-package-result (frame pane)
   (with-slots (iapropos)
@@ -400,7 +409,8 @@
 	  (dolist (package matching-packages)
 	    (fresh-line pane)
 	    (clim:stream-increment-cursor-position pane 5 0)
-	    (princ (package-name package) pane))))))
+	    (clim:present package 'package :stream pane :view clim:+textual-view+))))))
+
 
 
 ;;;
@@ -468,6 +478,17 @@
 	    (setf selected-values (remove-duplicates (push sym selected-values))))))
   ;;(%maybe-update-result-display)
   (%maybe-update-output-display))
+
+(define-apropos-navigator-command (com-select-package-for-return :name t)
+    ((p 'package :gesture :select))
+  (setf (clim:gadget-value
+	 (clim:find-pane-named clim:*application-frame* 'package-regex-text-field))
+	(format nil "^~A$" (package-name p))))
+
+(define-apropos-navigator-command (com-select-object-for-return :name t)
+    ((object 'object :gesture :select))
+  (clouseau:inspector object))
+
 
 ;;;
 ;;; run
