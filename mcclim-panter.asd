@@ -4,7 +4,7 @@
 |#
 
 #|
-  Debugging utility
+  McClim Developer Suite
 
   Author: Alessandro Serra (gas2serra@gmail.com)
 |#
@@ -14,20 +14,15 @@
   (:use :cl :asdf))
 (in-package #:mcclim-panter-asd)
 
-(defsystem mcclim-panter
+(defsystem #:mcclim-panter
   :version "0.1"
   :author "Alessandro Serra"
   :license "GPLv3"
-  :depends-on (:mcclim :clim-listener :anaphora :clouseau :mcclim-panter-apropos :mcclim-panter-debugger :mcclim-panter-task-manager)
-  #|
-  :components ((:module "mcclim"
-			:serial t	
+  :depends-on (:mcclim-panter-apropos
+	       :mcclim-panter-debugger
+	       :mcclim-panter-task-manager)
+  :components ((:module "src"
+			:serial t
 			:components
-			((:file "mcclim-panter")
-			 (:file "commands")
-			 (:file "frame")
-			 (:file "main"))))
-|#
-  :description "Debugging utility")
-
-
+			((:file "mcclim-panter"))))
+  :description "McClim Developer Suite")
