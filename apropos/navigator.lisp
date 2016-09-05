@@ -13,9 +13,9 @@
 
 (clim:define-application-frame apropos-navigator ()
   ((return-values :initform nil)
-   (syntax-error :initform nil)
    (selected-result-options :initform '(:fully-qualified))
    (selected-output-option :initform ':selection)
+   (selected-action-option :initform ':last-selected)
    (iapropos :initform (make-instance 'iapropos)))
   (:menu-bar nil)
   (:panes
@@ -26,6 +26,7 @@
    (symbol-result-display :application
 			  :incremental-redisplay t
 			  :display-function '%render-symbol-result
+			  :display-time nil
 			  :scroll-bars :vertical
 			  :end-of-line-action :allow
 			  :end-of-page-action :allow
@@ -33,6 +34,7 @@
    (package-result-display :application
 			  :incremental-redisplay t
 			  :display-function '%render-package-result
+			  :display-time nil
 			  :scroll-bars :vertical
 			  :end-of-line-action :allow
 			  :end-of-page-action :allow
@@ -78,18 +80,22 @@
 		     :value nil
 		     :items (list nil 'climi::presentation-type-class)
 		     :value-changed-callback #'%update-metaclass-option)
-   (return-selected-symbols-button :push-button
-				   :id :selected-symbols
-				   :activate-callback #'quit-and-return-values
-				   :label "selected symbols")
-   (return-symbols-button :push-button
-			  :id :symbols
-			  :activate-callback #'quit-and-return-values
-			  :label "symbols")
-   (return-packages-button :push-button
-			   :id :packages
-			   :activate-callback #'quit-and-return-values
-			   :label "packages"))
+   (action-option
+    (clim:with-radio-box (:orientation :vertical
+				       :value-changed-callback '%update-action-option)
+      (clim:radio-box-current-selection "last-selected") "all-selected" "all-matched"))
+   (return-action :push-button
+		  :activate-callback #'return-action
+		  :label "return")
+   (copy-action :push-button
+		:activate-callback #'copy-action
+		:label "copy")
+   (kill-ring-action :push-button
+		     :activate-callback #'kill-ring-action
+		     :label "kill-ring")
+   (clear-action :push-button
+		 :activate-callback #'clear-action
+		 :label "clear selection"))
   (:layouts
    (:default
        (clim:horizontally nil
@@ -108,11 +114,14 @@
 		 subclass-option)
 	       (clim:labelling (:label "metaclass of")
 		 metaclass-option)))
-	   (clim:+fill+ (clim:labelling (:label "Quit and return")
+	   (clim:+fill+ (clim:labelling (:label "Actions")
 			  (clim:vertically nil
-			    return-selected-symbols-button
-			    return-symbols-button
-			    return-packages-button))))
+			    return-action
+			    copy-action
+			    kill-ring-action
+			    action-option
+			    clear-action
+			    ))))
 	 (clim:+fill+
 	  (clim:vertically nil
 	    (2/3 (clim:labelling (:label "Results")
@@ -137,27 +146,33 @@
 
 (defun %update-matching-packages (this-gadget value)
   (declare (ignore this-gadget))
-  (with-slots (iapropos syntax-error) clim:*application-frame*
+  (anaphora:awhen (clim:find-pane-named clim:*application-frame* 'output-display)
+    (clim:window-clear anaphora:it))
+  (with-slots (iapropos) clim:*application-frame*
     (handler-bind ((cl-ppcre:ppcre-syntax-error
 		    #'(lambda (condition)
-			(setf  syntax-error condition)
+			(%print-error
+			 (clim:find-pane-named clim:*application-frame* 'output-display)
+			 condition)
 			(%maybe-update-result-display)
 			(return-from %update-matching-packages))))
-      (setf syntax-error nil)
       (setf (iapropos-package-text iapropos) value)
       (%maybe-update-result-display))))
 
 (defun %update-matching-symbols (this-gadget value)
   (declare (ignore this-gadget))
-  (with-slots (iapropos syntax-error) clim:*application-frame*
+  (anaphora:awhen (clim:find-pane-named clim:*application-frame* 'output-display)
+    (clim:window-clear anaphora:it))
+  (with-slots (iapropos) clim:*application-frame*
     (handler-bind ((cl-ppcre:ppcre-syntax-error
 		    #'(lambda (condition)
-			(setf  syntax-error condition)
+			(%print-error
+			 (clim:find-pane-named clim:*application-frame* 'output-display)
+			 condition)
 			(%maybe-update-result-display)
 			(return-from %update-matching-symbols))))
-      (setf syntax-error nil)
-      (setf (iapropos-text iapropos) value))
-    (%maybe-update-result-display)))
+      (setf (iapropos-text iapropos) value)
+      (%maybe-update-result-display))))
 
 (defun %update-bound-to-option (this-gadget selected-gadget)
   (declare (ignore this-gadget))
@@ -226,6 +241,12 @@
        selected-result-options)))
   (%maybe-update-result-display))
 
+(defun %update-action-option (this-gadget selected-gadget)
+  (declare (ignore this-gadget))
+  (with-slots (selected-action-option) clim:*application-frame*
+    (setf selected-action-option 
+	  (intern (string-upcase (clim:gadget-label selected-gadget)) :keyword))))
+
 (defun %maybe-update-result-display (&rest _)
   (declare (ignore _))
   (anaphora:awhen (clim:find-pane-named clim:*application-frame* 'package-result-display)
@@ -233,11 +254,10 @@
   (anaphora:awhen (clim:find-pane-named clim:*application-frame* 'symbol-result-display)
     (clim:redisplay-frame-pane clim:*application-frame* anaphora:it :force-p t)))
 
-
 (defun %maybe-update-output-display (&rest _)
   (declare (ignore _))
   (anaphora:awhen (clim:find-pane-named clim:*application-frame* 'output-display)
-		  (clim:redisplay-frame-pane clim:*application-frame* anaphora:it :force-p t)))
+    (clim:redisplay-frame-pane clim:*application-frame* anaphora:it :force-p t)))
 
 
 ;;;
@@ -247,11 +267,20 @@
 
 (defun %print-heading-text (pane text &optional (x-offset 0))
   (fresh-line pane)
-  (clim:stream-increment-cursor-position pane (+ x-offset 10) 0)
+  (clim:stream-increment-cursor-position pane (+ x-offset 10) 5)
   (clim:surrounding-output-with-border
       (pane :shape :underline :ink clim:+black+)
     (clim:with-text-style (pane *apropos-navigator-heading-text-style*)
       (princ text pane))))
+
+(defun %print-error (pane condition &optional (x-offset 0))
+  (fresh-line pane)
+  (clim:stream-increment-cursor-position pane (+ x-offset 10) 5)
+  (clim:with-drawing-options (pane :ink clim:+red+)
+    (%print-heading-text pane "Syntax Error")
+    (fresh-line pane)
+    (clim:stream-increment-cursor-position pane (+ x-offset 10) 0)
+    (princ condition pane)))
 
 (defun %print-text (pane text &optional (x-offset 0))
   (fresh-line pane)
@@ -265,7 +294,6 @@
   (declare (ignore frame))
   (with-slots (return-values selected-output-option iapropos) clim:*application-frame*
     (flet ((print-symbol (sym type opt)
-	     
 	     (ccase opt
 	       (:selection
 		(%print-heading-text pane (format nil "Selected symbols"))
@@ -284,93 +312,102 @@
 	       (:description
 		(%print-heading-text pane (format nil "Description (~A)" type))
 		(%print-text pane (symbol-description (car return-values) type))))
-	     (princ #\Newline pane)
-	     (fresh-line pane)
-	     (clim:stream-increment-cursor-position pane 10 10)
+	     ;;(princ #\Newline pane)
+	     ;;(fresh-line pane)
+	     (clim:stream-increment-cursor-position pane 0 5)
 	     ))
-      (setf (clim:stream-cursor-position pane) (values 10 10))
-     
-      (when return-values
-	(let ((*print-escape* t))
-	  (%print-heading-text pane (format nil "~S" (car return-values))))
-	(if (iapropos-bound-to iapropos) 
-	    (print-symbol (car return-values) (iapropos-bound-to iapropos) selected-output-option)
-	      (if (eq selected-output-option :selection)
-		  (print-symbol (car return-values) nil selected-output-option)
-		  (dolist (type *symbol-bounding-types*)
-		    (when (symbol-bound-to (car return-values) type)
-		      (print-symbol (car return-values) type selected-output-option)))))))))
+      ;;(setf (clim:stream-cursor-position pane) (values 10 10))     
+      (if (null return-values)
+	  (%print-heading-text pane (format nil "Empty selection"))
+	  (progn
+	    (let ((*print-escape* t))
+	      (%print-heading-text pane (format nil "~S" (car return-values))))
+	    (if (iapropos-bound-to iapropos) 
+		(print-symbol (car return-values) (iapropos-bound-to iapropos) selected-output-option)
+		(if (eq selected-output-option :selection)
+		    (print-symbol (car return-values) nil selected-output-option)
+		    (dolist (type *symbol-bounding-types*)
+		      (when (symbol-bound-to (car return-values) type)
+			(print-symbol (car return-values) type selected-output-option))))))))))
 
 (defun %render-symbol-result (frame pane)
-  (declare (ignore frame))
-  (with-slots (iapropos syntax-error)
+  (with-slots (iapropos return-values)
       clim:*application-frame*
-    (when syntax-error
-      (clim:with-drawing-options (pane :ink clim:+red+ :text-size 16)
-	(let* ((*package* (find-package 'keyword)))
-	  (format pane "Error encountered while trying to update apropos display~2%~A~2%Inspect ~S for more info" 
-		  syntax-error
-		  'syntax-error)))
-      (return-from %render-symbol-result))
-    (let* ((matching-symbols (iapropos-matching-symbols iapropos)))
-      (labels ((matching-symbols-column ()
-		 (let ((symbols-to-print (take 400 matching-symbols)))
-		   (setf (clim:stream-cursor-position pane) (values 10 5))
-		   (%print-heading-text pane
-					(format nil "Symbols (~A/~A~A)"
-						(length symbols-to-print)
-						(length matching-symbols)
-						(if (iapropos-result-overflow-p iapropos) "*" "")))
-		   (progn (clim:stream-increment-cursor-position pane 0 -8)
-			  (dolist (sym symbols-to-print)
-			    (fresh-line pane)
-			    (clim:stream-increment-cursor-position pane 10 0)
-			    (clim:present sym 'symbol :stream pane))))))
-	(if (null matching-symbols)
-	    (%print-text pane "; no results")
-	    (matching-symbols-column))))))
+    (let* ((matching-symbols (iapropos-matching-symbols iapropos))
+	   (symbols-to-print (take 400 matching-symbols)))
+      (%print-heading-text pane
+			   (format nil "Symbols (~A/~A~A)"
+				   (length symbols-to-print)
+				   (length matching-symbols)
+				   (if (iapropos-result-overflow-p iapropos) "*" "")))
+      (if (null matching-symbols)
+	  (progn
+	    (fresh-line pane)
+	    (clim:stream-increment-cursor-position pane 5 0)
+	    (princ "; no results" pane))
+	  (dolist (sym symbols-to-print)
+	    (fresh-line pane)
+	    (clim:stream-increment-cursor-position pane 10 0)
+	    (clim:with-drawing-options (pane :ink
+					     (if (member sym return-values)
+						 clim:+blue+
+						 clim:+black+))
+	      (clim:present sym 'symbol :stream pane)))))))
 
 (defun %render-package-result (frame pane)
-  (declare (ignore frame))
-  (with-slots (iapropos syntax-error)
+  (with-slots (iapropos)
       clim:*application-frame*
-    (when syntax-error
-      (clim:with-drawing-options (pane :ink clim:+red+ :text-size 16)
-	(let* ((*package* (find-package 'keyword)))
-	  (format pane "Error encountered while trying to update apropos display~2%~A~2%Inspect ~S for more info" 
-		  syntax-error
-		  'syntax-error)))
-      (return-from %render-package-result))
     (let* ((matching-packages (iapropos-matching-packages iapropos)))
-      (labels ((matching-packages-column ()
-		 (setf (clim:stream-cursor-position pane) (values 10 5))
-		 (%print-heading-text pane (format nil "Packages (~A)" (length matching-packages)))
-		 (dolist (package matching-packages)
-		   (fresh-line pane)
-		   (clim:stream-increment-cursor-position pane 10 0)
-		   ;;(clim:present package 'package :stream pane))))
-		   (princ (package-name package) pane))))
-	(if (null matching-packages)
-	    (%print-text pane "; no results")
-	    (matching-packages-column))))))
-	
+      (%print-heading-text pane (format nil "Packages (~A)" (length matching-packages)))
+      (if (null matching-packages)
+	  (progn
+	    (fresh-line pane)
+	    (clim:stream-increment-cursor-position pane 5 0)
+	    (princ "; no results" pane))
+	  (dolist (package matching-packages)
+	    (fresh-line pane)
+	    (clim:stream-increment-cursor-position pane 5 0)
+	    (princ (package-name package) pane))))))
 
 
 ;;;
-;;; exit
+;;; actions
 ;;;
 
-(defun quit-and-return-values (this-gadget)
-  (with-slots (return-values iapropos) clim:*application-frame*
-    (setf *return-values* 
-	  (ccase (clim:gadget-id this-gadget)
-	    (:selected-symbols
+(defun %update-return-values ()
+  (with-slots (return-values selected-action-option iapropos) clim:*application-frame*
+    (setf *return-values*
+	  (ccase selected-action-option
+	    (:last-selected
+	     (car return-values))
+	    (:all-selected
 	     (remove-duplicates return-values))
-	    (:symbols
-	     (iapropos-matching-symbols iapropos))
-	    (:packages
-	     (iapropos-matching-packages iapropos))))
-    (clim:frame-exit clim:*application-frame*)))
+	    (:all-matched
+	     (iapropos-matching-symbols iapropos))))))
+
+(defun return-action (this-gadget)
+  (declare (ignore this-gadget))
+  (%update-return-values)
+  (clim:frame-exit clim:*application-frame*))
+
+(defun copy-action (this-gadget)
+  (declare (ignore this-gadget))
+  (%update-return-values)
+  (with-input-from-string (input-stream (format nil "~S" *return-values*))
+    (uiop:run-program "xclip -selection clipboard -i " :output nil :input input-stream)))
+
+(defun kill-ring-action (this-gadget)
+  (declare (ignore this-gadget))
+  (%update-return-values)
+  (drei-kill-ring:kill-ring-standard-push drei-kill-ring:*kill-ring*
+					  (format nil "~A" *return-values*)))
+
+(defun clear-action (this-gadget)
+  (declare (ignore this-gadget))
+  (with-slots (return-values) clim:*application-frame*
+    (setf return-values nil))
+  (%maybe-update-output-display))
+
 
 ;;;
 ;;; commands
@@ -387,7 +424,10 @@
 (define-apropos-navigator-command (com-select-symbol-for-return :name t)
     ((sym 'symbol :gesture :select))
   (with-slots (return-values) clim:*application-frame*
-    (push sym return-values))
+    (if (member sym return-values)
+	(setf return-values (remove sym return-values))
+	(setf return-values (remove-duplicates (push sym return-values)))))
+  ;;(%maybe-update-result-display)
   (%maybe-update-output-display))
 
 ;;;
