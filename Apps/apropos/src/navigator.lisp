@@ -347,7 +347,10 @@
 			      :stream pane :view clim:+textual-view+))
 	       (:location
 		(%print-heading-text pane (format nil "Location (~A)" type))
-		(%print-text pane (symbol-location (car selected-values) type)))
+		(fresh-line pane)
+		(clim:stream-increment-cursor-position pane 10 0)
+		(clim:present (symbol-location sym type) 'source-location
+			      :stream pane :view clim:+textual-view+))
 	       (:documentation
 		(%print-heading-text pane (format nil "Documentation (~A)" type))
 		(%print-text pane (symbol-documentation (car selected-values) type)))
@@ -488,6 +491,14 @@
 (define-apropos-navigator-command (com-select-object-for-return :name t)
     ((object 'object :gesture :select))
   (clouseau:inspector object))
+
+(define-apropos-navigator-command (com-select-source-location :name t)
+    ((object 'source-location :gesture :select))
+  (climacs:edit-file (car object))
+  (clim:execute-frame-command (climacs::find-climacs-frame)
+			      (list 'drei-commands::com-goto-position (cdr object))))
+
+  
 
 
 ;;;

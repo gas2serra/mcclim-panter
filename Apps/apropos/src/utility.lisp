@@ -81,38 +81,43 @@
 
 (defun symbol-location (symbol type)
   (let ((definitions (swank::find-definitions symbol)))
-    #+sbcl
-    (ccase type
-      (:variable
-       (cdr (find-if #'(lambda (x) (eq 'defvar (caar x))) definitions)))
+    (flet ((convert (ty)
+	     (let ((loc 
+		    (cdr (car (cdr (find-if #'(lambda (x) (eq ty (caar x))) definitions))))))
+	       (cons (cadr (assoc :file loc))
+		     (cadr (assoc :position loc))))))
+      #+sbcl
+      (ccase type
+	(:variable
+	 (convert 'defvar))
       (:function
-       (cdr (find-if #'(lambda (x) (eq 'defun (caar x))) definitions)))
+       (convert 'defun))
       (:generic-function
-       (cdr (find-if #'(lambda (x) (eq 'defgeneric (caar x))) definitions)))
+       (convert 'defgeneric))
       (:macro
-       (cdr (find-if #'(lambda (x) (eq 'defmacro (caar x))) definitions)))
+       (convert 'defmacro))
       (:class
-       (cdr (find-if #'(lambda (x) (eq 'defclass (caar x))) definitions)))
+       (convert 'defclass))
       (:setf
-       (cdr (find-if #'(lambda (x) (eq 'define-setf-expander (caar x))) definitions)))
+       (convert 'define-setf-expander))
       (:type
-       (cdr (find-if #'(lambda (x) (eq 'defclass (caar x))) definitions))))
-    #+ccl
-    (ccase type
-      (:variable
-       (cdr (find-if #'(lambda (x) (eq 'variable (caar x))) definitions)))
-      (:function
-       (cdr (find-if #'(lambda (x) (eq 'defun (caar x))) definitions)))
-      (:generic-function
-       (cdr (find-if #'(lambda (x) (eq 'defgeneric (caar x))) definitions)))
-      (:macro
-       (cdr (find-if #'(lambda (x) (eq 'defmacro (caar x))) definitions)))
-      (:class
-       (cdr (find-if #'(lambda (x) (eq 'defclass (caar x))) definitions)))
-      (:setf
-       (cdr (find-if #'(lambda (x) (eq 'define-setf-expander (caar x))) definitions)))
-      (:type
-       (cdr (find-if #'(lambda (x) (eq 'defclass (caar x))) definitions))))))
+       (convert 'defclass)))
+      #+ccl
+      (ccase type
+	(:variable
+	 (cdr (find-if #'(lambda (x) (eq 'variable (caar x))) definitions)))
+	(:function
+	 (cdr (find-if #'(lambda (x) (eq 'defun (caar x))) definitions)))
+	(:generic-function
+	 (cdr (find-if #'(lambda (x) (eq 'defgeneric (caar x))) definitions)))
+	(:macro
+	 (cdr (find-if #'(lambda (x) (eq 'defmacro (caar x))) definitions)))
+	(:class
+	 (cdr (find-if #'(lambda (x) (eq 'defclass (caar x))) definitions)))
+	(:setf
+	 (cdr (find-if #'(lambda (x) (eq 'define-setf-expander (caar x))) definitions)))
+	(:type
+	 (cdr (find-if #'(lambda (x) (eq 'defclass (caar x))) definitions)))))))
       
 (defun symbol-description (symbol type)
   (with-output-to-string (*standard-output*)
