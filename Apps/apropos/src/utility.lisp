@@ -57,6 +57,8 @@
     (cond
       ((member :generic-function types)
        (remove :function types))
+      ((member :macro types)
+       (remove :function types))
       (t
        types))))
 

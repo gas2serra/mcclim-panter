@@ -28,5 +28,6 @@
 			 (:file "iapropos")
 			 (:file "presentations")
 			 (:file "navigator-parameters")
-			 (:file "navigator"))))
+			 (:file "navigator-frame")
+			 (:file "navigator-commands"))))
   :description "Apropos Navigator")
