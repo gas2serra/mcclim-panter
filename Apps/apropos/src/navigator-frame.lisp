@@ -355,22 +355,30 @@
 		      (princ anaphora:it pane)))))
 	       (:object
 		(%print-heading-text pane (format nil "Object (~A)" type))
-		(fresh-line pane)
-		(clim:stream-increment-cursor-position pane 10 0)
-		(clim:present (symbol-object sym type) 'object
-			      :stream pane :view clim:+textual-view+))
+		(let ((obj (symbol-object sym type)))
+		  (when obj
+		    (fresh-line pane)
+		    (clim:stream-increment-cursor-position pane 10 0)
+		    (clim:present obj 'object
+				  :stream pane :view clim:+textual-view+))))
 	       (:location
 		(%print-heading-text pane (format nil "Location (~A)" type))
-		(fresh-line pane)
-		(clim:stream-increment-cursor-position pane 10 0)
-		(clim:present (symbol-location sym type) 'source-location
-			      :stream pane :view clim:+textual-view+))
+		(let ((loc (symbol-location sym type)))
+		  (when loc
+		    (fresh-line pane)
+		    (clim:stream-increment-cursor-position pane 10 0)
+		    (clim:present loc 'source-location
+				  :stream pane :view clim:+textual-view+))))
 	       (:documentation
 		(%print-heading-text pane (format nil "Documentation (~A)" type))
-		(%print-text pane (symbol-documentation (car selected-values) type)))
+		(let ((doc (symbol-documentation (car selected-values) type)))
+		  (when doc
+		    (%print-text pane doc))))
 	       (:description
 		(%print-heading-text pane (format nil "Description (~A)" type))
-		(%print-text pane (symbol-description (car selected-values) type))))
+		(let ((des (symbol-description (car selected-values) type)))
+		  (when des
+		    (%print-text pane des)))))
 	     ;;(princ #\Newline pane)
 	     ;;(fresh-line pane)
 	     (clim:stream-increment-cursor-position pane 0 5)
@@ -457,10 +465,6 @@
 ;;;
 ;;;
 ;;;
-
-(clim:find-pane-named
- clim:*application-frame* 'symbol-result-display)))
-
 
 (defmacro with-fixed-vertical-scroll-bar (pane &body body)
   (let ((vscrollbar (gensym "VSCROLLBAR"))

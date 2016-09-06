@@ -67,13 +67,16 @@
     (:variable
      (symbol-value symbol))
     (:function
-     (symbol-function symbol))
+     (when (fboundp symbol)
+       (symbol-function symbol)))
     (:macro
      (macro-function symbol))
     (:class
-     (find-class symbol))
+     (when (find-class symbol nil)
+       (find-class symbol)))
     (:generic-function
-     (symbol-function symbol))
+     (when (fboundp symbol)
+       (symbol-function symbol)))
     (:setf
      #+sbcl (swank/sbcl::setf-expander symbol)
      #+ccl nil)
@@ -83,10 +86,13 @@
 (defun symbol-location (symbol type)
   (let ((definitions (swank::find-definitions symbol)))
     (flet ((convert (ty)
+
 	     (let ((loc 
-		    (cdr (car (cdr (find-if #'(lambda (x) (eq ty (caar x))) definitions))))))
-	       (cons (cadr (assoc :file loc))
-		     (cadr (assoc :position loc))))))
+		    (car (cdr (find-if #'(lambda (x) (eq ty (caar x))) definitions)))))
+	       ;;(clouseau:inspector (format nil "~A" loc))
+	       (when (eq (car loc) :location)
+		 (cons (cadr (assoc :file (cdr loc)))
+		       (cadr (assoc :position (cdr loc))))))))
       #+sbcl
       (ccase type
 	(:variable
@@ -126,15 +132,20 @@
       ((:variable nil)
        (describe symbol))
       (:function
-       (describe (symbol-function symbol)))
+       (when (fboundp symbol)
+	 (describe (symbol-function symbol))))
       (:macro
-       (describe (macro-function symbol)))
+       (when (macro-function symbol)
+	 (describe (macro-function symbol))))
       (:class
-       (describe (find-class symbol)))
+       (when (find-class symbol nil)
+	 (describe (find-class symbol))))
       (:generic-function
-       (describe (symbol-function symbol)))
+       (when (fboundp symbol)
+	 (describe (symbol-function symbol))))
       (:setf
-       #+sbcl (describe (sb-int:info :setf :expander symbol))
+       #+sbcl (when (sb-int:info :setf :expander symbol)
+		(describe (sb-int:info :setf :expander symbol)))
        #+ccl (describe (ccl:setf-function-spec-name `(setf ,symbol))))
       (:type
        #+sbcl (describe (sb-kernel:values-specifier-type symbol))

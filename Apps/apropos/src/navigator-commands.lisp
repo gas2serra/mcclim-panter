@@ -22,7 +22,7 @@
 (clim:define-command (com-edit-select-all :command-table edit-menu
 					  :menu t
 					  :name "Select all"
-					  :keystroke (#\a :control))
+					  :keystroke (#\a :meta :control))
     ()
   (with-slots (selected-values iapropos) clim:*application-frame*
     (setf selected-values (iapropos-matching-symbols iapropos)))
@@ -31,7 +31,7 @@
 (clim:define-command (com-edit-select-none :command-table edit-menu
 					   :menu t
 					   :name "Select none"
-					   :keystroke (#\A :control))
+					   :keystroke (#\n :meta :control))
     ()
   (with-slots (selected-values iapropos) clim:*application-frame*
     (setf selected-values nil))
@@ -40,7 +40,7 @@
 (clim:define-command (com-edit-copy-to-kill-ring :command-table edit-menu
 						 :menu t
 						 :name "Copy to kill ring"
-						 :keystroke (#\c :control))
+						 :keystroke (#\k :meta :control))
     ()
   (setf (clim:port-keyboard-input-focus (clim:port clim:*application-frame*)) 
 	(car (clim:sheet-children
@@ -52,7 +52,7 @@
 (clim:define-command (com-edit-copy-to-clipboard :command-table edit-menu
 						 :menu t
 						 :name "Copy to clipboard"
-						 :keystroke (#\C :control))
+						 :keystroke (#\c :meta :control))
     ()
   (%update-return-values)
   (with-input-from-string (input-stream (format nil "~S" *return-values*))
