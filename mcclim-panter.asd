@@ -20,6 +20,7 @@
   :license "GPLv3"
   :depends-on (:clim-listener
 	       :drei-mcclim
+	       :climacs
 	       :mcclim-panter-apropos
 	       :mcclim-panter-debugger
 	       :mcclim-panter-task-manager)

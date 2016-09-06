@@ -12,11 +12,12 @@
 ;;;
 
 (defclass iapropos ()
-  ((apropos-text :initform nil
-		 :accessor iapropos-text)
-   (cached-apropos-scanner :initform nil)
-   (package-apropos-text :initform ""
-			 :accessor iapropos-package-text)
+  ((symbol-text :initform nil
+		:accessor iapropos-symbol-text)
+   (cached-symbol-scanner :initform nil)
+   (package-text :initform ""
+		 :accessor iapropos-package-text)
+   (cached-package-scanner :initform nil)
    (external-yes/no :type '(member nil :yes :no)
 		    :initform nil
 		    :accessor iapropos-external-yes/no)
@@ -27,8 +28,8 @@
 		       :variable :function :generic-function
 		       :class :macro
 		       :setf :type)
-	       :initform nil
-	       :accessor iapropos-bound-to)
+	     :initform nil
+	     :accessor iapropos-bound-to)
    (subclass-of :initform nil
 		:accessor iapropos-subclass-of)
    (metaclass-of :initform nil
@@ -40,9 +41,7 @@
    (result-overflow-p :initform nil
 		      :reader iapropos-result-overflow-p)
    (cached-matching-packages :initform (list-all-packages))
-   (cached-matching-symbols :initform nil)
-   (syntax-error-p :initform t
-		   :accessor iapropos-syntax-error-p))
+   (cached-matching-symbols :initform nil))
   (:documentation "Interactive apropos class based on cl-ppcre and swank"))
 
 ;;; generic funtions
@@ -53,32 +52,32 @@
 (defgeneric iapropos-matching-symbol-p (iapropos symbol))
 
 ;;; methods
-(defmethod (setf iapropos-text) :after (text (iapropos iapropos))
+(defmethod (setf iapropos-symbol-text) :after (text (iapropos iapropos))
   (declare (ignore text))
-  (with-slots (syntax-error-p apropos-text cached-apropos-scanner
-			      cached-matching-symbols) iapropos
+  (with-slots (symbol-text cached-symbol-scanner 
+			   cached-matching-symbols) iapropos
     (handler-bind ((cl-ppcre:ppcre-syntax-error
 		    #'(lambda (condition)
-			(setf cached-matching-symbols nil)
-			(unless syntax-error-p
-			  (format *debug-io* "iapropos: ~A~%" condition)
-			  (return-from iapropos-text condition)))))
-      (when apropos-text
-	(setf cached-apropos-scanner (cl-ppcre:create-scanner
-				      apropos-text :case-insensitive-mode t)))
+			(setf cached-symbol-scanner nil)
+			(setf cached-matching-symbols nil))))
+      (setf cached-symbol-scanner (when (and symbol-text (string/= symbol-text ""))
+				    (cl-ppcre:create-scanner
+				     symbol-text :case-insensitive-mode t)))
       (%iapropos-update-matching-symbols iapropos))))
 
 (defmethod (setf iapropos-package-text) :after (text (iapropos iapropos))
   (declare (ignore text))
-  (with-slots (syntax-error-p cached-matching-symbols
-			      cached-matching-packages) iapropos
+  (with-slots (package-text cached-package-scanner
+			    cached-matching-symbols
+			    cached-matching-packages) iapropos
     (handler-bind ((cl-ppcre:ppcre-syntax-error
 		    #'(lambda (condition)
+			(setf cached-package-scanner nil)
 			(setf cached-matching-packages nil)
-			(setf cached-matching-symbols nil)
-			(unless syntax-error-p
-			  (format *debug-io* "iapropos: ~A~%" condition)
-			  (return-from iapropos-package-text condition)))))
+			(setf cached-matching-symbols nil))))
+      (setf cached-package-scanner (when (and package-text (string/= package-text ""))
+				     (cl-ppcre:create-scanner
+				      package-text :case-insensitive-mode t)))
       (%iapropos-update-matching-packages iapropos))))
 
 (defmethod (setf iapropos-external-yes/no) :after (val (iapropos iapropos))
@@ -123,24 +122,24 @@
 (defgeneric %iapropos-update-matching-symbols (iapropos))
 (defgeneric %iapropos-update-matching-packages (iapropos))
 
+;;; methods
 (defmethod %iapropos-update-matching-packages ((iapropos iapropos))
-  (with-slots (cached-matching-packages package-apropos-text) iapropos
+  (with-slots (cached-matching-packages cached-package-scanner) iapropos
     (setf cached-matching-packages
-	  (if (not (and package-apropos-text (string/= package-apropos-text "")))
-	      (list-all-packages)
-	      (let ((scanner (cl-ppcre:create-scanner package-apropos-text
-						      :case-insensitive-mode t))
-		    (out))
-		(dolist (p (list-all-packages))
-		  (when (cl-ppcre:scan scanner (package-name p))
-		    (push p out)))
-		out))))
+	  (sort
+	   (if (null cached-package-scanner)
+	       (list-all-packages)
+	       (let ((out))
+		 (dolist (p (list-all-packages))
+		   (when (cl-ppcre:scan cached-package-scanner (package-name p))
+		     (push p out)))
+		 out))
+	   #'string< :key #'package-name)))
   (%iapropos-update-matching-symbols iapropos))
 
 (defmethod %iapropos-update-matching-symbols ((iapropos iapropos))
   (with-slots (cached-matching-packages
 	       cached-matching-symbols
-	       apropos-text
 	       max-result-length
 	       result-overflow-p) iapropos
     (setf cached-matching-symbols
@@ -172,7 +171,7 @@
 ;;;
 
 (defun %iapropos-matching-symbol-p (iapropos symbol)
-  (with-slots (cached-apropos-scanner external-yes/no documentation-yes/no bound-to
+  (with-slots (cached-symbol-scanner external-yes/no documentation-yes/no bound-to
 	       subclass-of metaclass-of filter-fn) iapropos
     (and
      (if external-yes/no
@@ -198,6 +197,6 @@
 	 (eq (not (symbol-documentation symbol bound-to))
 	     (eq documentation-yes/no :no))
 	 t)
-     (if cached-apropos-scanner
-	 (cl-ppcre:scan cached-apropos-scanner (symbol-name symbol))
+     (if cached-symbol-scanner
+	 (cl-ppcre:scan cached-symbol-scanner (symbol-name symbol))
 	 t))))

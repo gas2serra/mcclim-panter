@@ -13,6 +13,9 @@
 	(cons "sheet" 'clim:sheet)
 	(cons "pane" 'clim:pane)
 	(cons "gadget" 'clim:gadget)
+	(cons "presentation" 'clim:presentation)
+	(cons "view" 'clim:view)
+	(cons "command-table" 'clim:command-table)
 	(cons "application-frame" 'clim:application-frame)))
 
 (defparameter *apropos-navigator-metaclas-of-options*

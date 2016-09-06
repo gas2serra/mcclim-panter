@@ -5,7 +5,17 @@
 
 (in-package :mcclim-panter-apropos)
 
-(defvar *return-values* nil)
+
+
+;;;
+;;; command tables
+;;;
+
+(clim:make-command-table 'edit-menu)
+
+;;;
+;;; application frame
+;;;
 
 (clim:define-application-frame apropos-navigator ()
   ((selected-values :initform nil)
@@ -14,7 +24,10 @@
    (selected-action-option :initform ':single)
    (symbol-view :initform +fully-qualified-symbol-view+)
    (iapropos :initform (make-instance 'iapropos)))
-  (:menu-bar nil)
+  (:command-table (apropos-navigator
+		   :inherit-from (edit-menu)
+		   :menu (("Edit" :menu edit-menu))))
+  (:menu-bar t)
   (:panes
    (symbol-regex-text-field :text-field
 			    :value-changed-callback '%update-matching-symbols)
@@ -95,22 +108,20 @@
 				       :value-changed-callback '%update-action-option)
       (clim:radio-box-current-selection "single") "multiple"))
    (return-action :push-button
-		  :activate-callback #'return-action
+		  :activate-callback #'(lambda (gadget)
+					 (declare (ingore gadget))
+					 (com-quit))
 		  :label "return")
    (copy-action :push-button
-		:activate-callback #'copy-action
+		:activate-callback #'(lambda (gadget)
+				       (declare (ingore gadget))
+				       (com-edit-copy-to-clipboard))
 		:label "copy")
-   (kill-ring-action :push-button
-		     :activate-callback #'kill-ring-action
-		     :label "kill-ring")
-   (clear-action :push-button
-		 :active nil
-		 :activate-callback #'clear-action
-		 :label "clear selection")
-   (select-all-action :push-button
-		      :active nil
-		      :activate-callback #'select-all-action
-		      :label "select all"))
+   (kill-ring-action :push-button 
+		     :activate-callback #'(lambda (gadget)
+					    (declare (ingore gadget))
+					    (com-edit-copy-to-kill-ring))
+		     :label "kill-ring"))
   (:layouts
    (:default
        (clim:horizontally nil
@@ -137,9 +148,7 @@
 			  (clim:vertically nil
 			    return-action
 			    copy-action
-			    kill-ring-action
-			    select-all-action
-			    clear-action))))
+			    kill-ring-action))))
 	 (clim:+fill+
 	  (clim:vertically nil
 	    (2/3 (clim:labelling (:label "Results")
@@ -157,6 +166,24 @@
 		symbol-regex-text-field)
 	      (clim:labelling (:label "package apropos" :align-x :center)
 		package-regex-text-field))))))))
+
+;;;
+;;; frame initialization
+;;;
+
+(defmethod clim::note-frame-enabled ((fm clim:frame-manager) (frame apropos-navigator))
+  (setf (clim:command-enabled 'com-edit-select-all clim:*application-frame*) nil)
+  (setf (clim:command-enabled 'com-edit-select-none clim:*application-frame*) nil))
+
+
+;;;
+;;; input/output
+;;;
+
+(defmethod clim:frame-standard-input ((frame apropos-navigator))
+  (car (clim:sheet-children
+	(clim:find-pane-named clim:*application-frame* 'symbol-regex-text-field))))
+
 
 ;;;
 ;;; callbacks
@@ -189,7 +216,7 @@
 			 condition)
 			(%maybe-update-result-display)
 			(return-from %update-matching-symbols))))
-      (setf (iapropos-text iapropos) value)
+      (setf (iapropos-symbol-text iapropos) value)
       (%maybe-update-result-display))))
 
 (defun %update-bound-to-option (this-gadget selected-gadget)
@@ -277,11 +304,11 @@
     (if (eq selected-action-option :single)
 	(progn
 	  (setf selected-values (when selected-values (list (car selected-values))))
-	  (clim:deactivate-gadget (clim:find-pane-named clim:*application-frame* 'clear-action))
-	  (clim:deactivate-gadget (clim:find-pane-named clim:*application-frame* 'select-all-action)))
+	  (setf (clim:command-enabled 'com-edit-select-all clim:*application-frame*) nil)
+	  (setf (clim:command-enabled 'com-edit-select-none clim:*application-frame*) nil))
 	(progn
-	  (clim:activate-gadget (clim:find-pane-named clim:*application-frame* 'clear-action))
-	  (clim:activate-gadget (clim:find-pane-named clim:*application-frame* 'select-all-action)))))
+	  (setf (clim:command-enabled 'com-edit-select-all clim:*application-frame*) t)
+	  (setf (clim:command-enabled 'com-edit-select-none clim:*application-frame*) t))))
   (%maybe-update-output-display))
 
 (defun %maybe-update-result-display (&rest _)
@@ -414,11 +441,11 @@
 	    (clim:stream-increment-cursor-position pane 5 0)
 	    (clim:present package 'package :stream pane :view clim:+textual-view+))))))
 
-
-
 ;;;
-;;; actions
+;;; utility function
 ;;;
+
+(defvar *return-values* nil)
 
 (defun %update-selected-values ()
   (with-slots (selected-values selected-action-option iapropos) clim:*application-frame*
@@ -429,49 +456,78 @@
 	    (:multiple
 	     (remove-duplicates selected-values))))))
 
-(defun return-action (this-gadget)
-  (declare (ignore this-gadget))
-  (%update-selected-values)
-  (clim:frame-exit clim:*application-frame*))
-
-(defun copy-action (this-gadget)
-  (declare (ignore this-gadget))
-  (%update-selected-values)
-  (with-input-from-string (input-stream (format nil "~S" *return-values*))
-    (uiop:run-program "xclip -selection clipboard -i " :output nil :input input-stream)))
-
-(defun kill-ring-action (this-gadget)
-  (declare (ignore this-gadget))
-  (%update-selected-values)
-  (drei-kill-ring:kill-ring-standard-push drei-kill-ring:*kill-ring*
-					  (format nil "~A" *return-values*)))
-
-(defun clear-action (this-gadget)
-  (declare (ignore this-gadget))
-  (with-slots (selected-values) clim:*application-frame*
-    (setf selected-values nil))
-  (%maybe-update-output-display))
-
-(defun select-all-action (this-gadget)
-  (declare (ignore this-gadget))
-  (with-slots (selected-values iapropos) clim:*application-frame*
-    (setf selected-values (iapropos-matching-symbols iapropos)))
-  (%maybe-update-output-display))
-
-
 ;;;
 ;;; commands
 ;;;
 
-(define-apropos-navigator-command (com-quit-and-selected-values :menu t
-						      :name t
-						      :keystroke ((:meta #\q)))
+(define-apropos-navigator-command (com-quit :menu t
+					    :name "Quit"
+					    :keystroke (#\q :meta))
     ()
-  (with-slots (selected-values) clim:*application-frame*
-    (setf *return-values* (remove-duplicates selected-values))
-    (clim:frame-exit clim:*application-frame*)))
+  (%update-selected-values)
+  (clim:frame-exit clim:*application-frame*))
 
-(define-apropos-navigator-command (com-select-symbol-for-return :name t)
+;;; edit
+
+(clim:define-command (com-edit-select-all :command-table edit-menu
+					  :menu t
+					  :name "Select all"
+					  :keystroke (#\a :control))
+    ()
+  (with-slots (selected-values iapropos) clim:*application-frame*
+    (setf selected-values (iapropos-matching-symbols iapropos)))
+  (%maybe-update-output-display))
+
+(clim:define-command (com-edit-select-none :command-table edit-menu
+					   :menu t
+					   :name "Select none"
+					   :keystroke (#\A :control))
+    ()
+  (with-slots (selected-values iapropos) clim:*application-frame*
+    (setf selected-values nil))
+  (%maybe-update-output-display))
+
+(clim:define-command (com-edit-copy-to-kill-ring :command-table edit-menu
+						 :menu t
+						 :name "Copy to kill ring"
+						 :keystroke (#\c :control))
+    ()
+  (setf (clim:port-keyboard-input-focus (clim:port clim:*application-frame*)) 
+	(car (clim:sheet-children
+	      (clim:find-pane-named clim:*application-frame* 'symbol-regex-text-field))))
+  (%update-selected-values)
+  (drei-kill-ring:kill-ring-standard-push drei-kill-ring:*kill-ring*
+					  (format nil "~A" *return-values*)))
+
+(clim:define-command (com-edit-copy-to-clipboard :command-table edit-menu
+						 :menu t
+						 :name "Copy to clipboard"
+						 :keystroke (#\C :control))
+    ()
+  (%update-selected-values)
+  (with-input-from-string (input-stream (format nil "~S" *return-values*))
+    (uiop:run-program "xclip -selection clipboard -i " :output nil :input input-stream)))
+
+;;; keystroke
+
+(clim:define-command (com-edit-move-focus :command-table edit-menu
+						 :menu nil
+						 :keystroke (#\Tab))
+    ()
+  (let ((sym-sheet (car (clim:sheet-children
+			 (clim:find-pane-named clim:*application-frame* 'symbol-regex-text-field))))
+	(pac-sheet (car (clim:sheet-children
+			 (clim:find-pane-named clim:*application-frame* 'package-regex-text-field)))))
+    (setf (clim:port-keyboard-input-focus (clim:port clim:*application-frame*))
+	      (if (eq
+		   (clim:port-keyboard-input-focus (clim:port clim:*application-frame*))
+		   sym-sheet)
+		  pac-sheet
+		  sym-sheet))))
+
+;;; gesture :select
+
+(define-apropos-navigator-command (com-select-symbol :name "Select symbol")
     ((sym 'symbol :gesture :select))
   (with-slots (selected-values selected-action-option) clim:*application-frame*
     (if (eq selected-action-option :single)
@@ -479,27 +535,27 @@
 	(if (member sym selected-values)
 	    (setf selected-values (remove sym selected-values))
 	    (setf selected-values (remove-duplicates (push sym selected-values))))))
-  ;;(%maybe-update-result-display)
   (%maybe-update-output-display))
 
-(define-apropos-navigator-command (com-select-package-for-return :name t)
-    ((p 'package :gesture :select))
+(define-apropos-navigator-command (com-select-package
+				   :name "Select package")
+    ((pack 'package :gesture :select))
   (setf (clim:gadget-value
 	 (clim:find-pane-named clim:*application-frame* 'package-regex-text-field))
-	(format nil "^~A$" (package-name p))))
+	(format nil "^~A$" (package-name pack))))
 
-(define-apropos-navigator-command (com-select-object-for-return :name t)
+(define-apropos-navigator-command (com-inspect-object
+				   :name "Inspect object")
     ((object 'object :gesture :select))
   (clouseau:inspector object))
 
-(define-apropos-navigator-command (com-select-source-location :name t)
+(define-apropos-navigator-command (com-edit-definition :name "Edit definition")
     ((object 'source-location :gesture :select))
   (climacs:edit-file (car object))
+  (unless (climacs::find-climacs-frame)
+    (sleep 1))
   (clim:execute-frame-command (climacs::find-climacs-frame)
 			      (list 'drei-commands::com-goto-position (cdr object))))
-
-  
-
 
 ;;;
 ;;; run
@@ -508,83 +564,7 @@
 (defun run-apropos-navigator ()
   (let ((*return-values* nil))
     (let* ((frame (clim:make-application-frame 'apropos-navigator)))
-      (setf (clim:frame-current-layout frame) :default) 
-      (setf (getf (slot-value frame 'clim-internals::properties) 'clim-clx::focus)
-	    (clim:find-pane-named frame 'package-regex-text-field))
-      ;;where?
-      ;;(clim:deactivate-gadget (clim:find-pane-named frame 'subclass-option))
-      ;;(clim:deactivate-gadget (clim:find-pane-named frame 'metaclass-option))
-      ;;(clim:deactivate-gadget (clim:find-pane-named frame 'documentation-option))
+      (setf (clim:frame-current-layout frame) :default)
       (clim:run-frame-top-level frame :name "apropos-navigator"))
     *return-values*))
 
-;;;
-;;; climacs
-;;;
-#|
-(in-package climacs-gui)
-
-(defvar return-point nil)
-
-(define-command (com-apropos-navigator
-                 :name t 
-                 :command-table drei-lisp-syntax::lisp-table) ()
-  (setf return-point (climacs-gui::point)
-        climi::selected-values nil)
-  (flexichain:insert-sequence climacs-gui::return-point (write-to-string
-							 (climi::run-apropos-navigator))))
-
-(esa-io::set-key 'com-apropos-navigator 'drei-lisp-syntax::lisp-table '((#\s :meta :control)))
-|#
-
-;; listener
-#|
-(CLIM-LISTENER::DEFINE-LISTENER-COMMAND (COM-RUN-APROPOS-NAVIGATOR :NAME T)
-    NIL
-  (RUN-OR-FOCUS-APROPOS-NAVIGATOR))
-|#
-
-;;;
-;;; stumpwm
-;;;
-
-#|
-(DEFUN RUN-OR-FOCUS-APROPOS-NAVIGATOR ()
-  ;;(ANAPHORA:AIF (STUMPWM::WINDOW-BY-NAME "APROPOS-NAVIGATOR") (STUMPWM:SELECT-WINDOW (STUMPWM::WINDOW-NAME ANAPHORA:IT))
-  ;;              (BORDEAUX-THREADS:MAKE-THREAD 'RUN-APROPOS-NAVIGATOR :NAME "APROPOS-NAVIGATOR")))
-  )
-
-
- (swank:find-source-location-for-emacs '(:inspector "cons"))
-(swank:find-definitions-for-emacs "cl:cons")
-(("(DEFTYPE CONS)"
-  (:LOCATION
-   (:FILE
-    "/home/csr21/src/lisp/sbcl-release-dir-20160830-dY7abU0Va/sbcl-1.3.9/src/compiler/generic/objdef.lisp")
-   (:POSITION 1) NIL))
- ("(DEFUN CONS)"
-  (:LOCATION
-   (:FILE
-    "/home/csr21/src/lisp/sbcl-release-dir-20160830-dY7abU0Va/sbcl-1.3.9/src/code/list.lisp")
-   (:POSITION 1) (:SNIPPET "(defun CONS ")))
- ("(DEFCLASS CONS)"
-  (:ERROR
-   "Error: DEFINITION-SOURCE of class CONS did not contain meaningful information."))
- ("(:DEFOPTIMIZER CONS SB-C:IR2-CONVERT)"
-  (:LOCATION
-   (:FILE
-    "/home/csr21/src/lisp/sbcl-release-dir-20160830-dY7abU0Va/sbcl-1.3.9/src/compiler/fun-info-funs.lisp")
-   (:POSITION 1) NIL))
- ("(:DEFOPTIMIZER CONS SB-C::STACK-ALLOCATE-RESULT)"
-  (:LOCATION
-   (:FILE
-    "/home/csr21/src/lisp/sbcl-release-dir-20160830-dY7abU0Va/sbcl-1.3.9/src/compiler/generic/vm-ir2tran.lisp")
-   (:POSITION 1) NIL))
- ("(DECLAIM CONS
-         SB-C:DEFKNOWN)"
-  (:LOCATION
-   (:FILE
-    "/home/csr21/src/lisp/sbcl-release-dir-20160830-dY7abU0Va/sbcl-1.3.9/src/compiler/fndb.lisp")
-   (:POSITION 1) NIL)))
-CL-USER> 
-|#

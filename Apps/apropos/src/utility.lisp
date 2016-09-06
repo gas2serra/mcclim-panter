@@ -32,16 +32,6 @@
      (not (eq (getf (swank/backend::describe-symbol-for-emacs symbol) type 'cl:t)
 	      t)))))
 
-(defun list-symbol-bounding-types (symbol)
-  (let ((types (remove-if #'(lambda (type)
-			      (not (symbol-bound-to symbol type)))
-			  *symbol-bounding-types*)))
-    (cond
-      ((member :generic-function types)
-       (remove :function types))
-      (t
-       types))))
-	
 (defun symbol-documentation (symbol type)
   (let ((doc (getf (swank/backend::describe-symbol-for-emacs symbol)
 		   (case type
@@ -60,6 +50,16 @@
 	nil
 	doc)))
 
+(defun list-symbol-bounding-types (symbol)
+  (let ((types (remove-if #'(lambda (type)
+			      (not (symbol-bound-to symbol type)))
+			  *symbol-bounding-types*)))
+    (cond
+      ((member :generic-function types)
+       (remove :function types))
+      (t
+       types))))
+
 (defun symbol-object (symbol type)
   (ccase type
     (:variable
@@ -76,8 +76,7 @@
      #+sbcl (swank/sbcl::setf-expander symbol)
      #+ccl nil)
     (:type
-     nil
-     )))
+     nil)))
 
 (defun symbol-location (symbol type)
   (let ((definitions (swank::find-definitions symbol)))
@@ -90,35 +89,35 @@
       (ccase type
 	(:variable
 	 (convert 'defvar))
-      (:function
-       (convert 'defun))
-      (:generic-function
-       (convert 'defgeneric))
-      (:macro
-       (convert 'defmacro))
-      (:class
-       (convert 'defclass))
-      (:setf
-       (convert 'define-setf-expander))
-      (:type
-       (convert 'defclass)))
+	(:function
+	 (convert 'defun))
+	(:generic-function
+	 (convert 'defgeneric))
+	(:macro
+	 (convert 'defmacro))
+	(:class
+	 (convert 'defclass))
+	(:setf
+	 (convert 'define-setf-expander))
+	(:type
+	 (convert 'defclass)))
       #+ccl
       (ccase type
 	(:variable
-	 (cdr (find-if #'(lambda (x) (eq 'variable (caar x))) definitions)))
+	 (convert 'variable))
 	(:function
-	 (cdr (find-if #'(lambda (x) (eq 'defun (caar x))) definitions)))
+	 (convert 'defun))
 	(:generic-function
-	 (cdr (find-if #'(lambda (x) (eq 'defgeneric (caar x))) definitions)))
+	 (convert 'defgeneric))
 	(:macro
-	 (cdr (find-if #'(lambda (x) (eq 'defmacro (caar x))) definitions)))
+	 (convert 'defmacro))
 	(:class
-	 (cdr (find-if #'(lambda (x) (eq 'defclass (caar x))) definitions)))
+	 (convert 'defclass))
 	(:setf
-	 (cdr (find-if #'(lambda (x) (eq 'define-setf-expander (caar x))) definitions)))
+	 (convert 'define-setf-expander))
 	(:type
-	 (cdr (find-if #'(lambda (x) (eq 'defclass (caar x))) definitions)))))))
-      
+	 (convert 'defclass))))))
+	
 (defun symbol-description (symbol type)
   (with-output-to-string (*standard-output*)
     (case type
@@ -139,12 +138,9 @@
        #+sbcl (describe (sb-kernel:values-specifier-type symbol))
        #+ccl (describe (or (find-class symbol nil) symbol))))))
 
-;;;
-;;; TODO
-;;;
 
 ;;;
-;;; utility
+;;; 
 ;;;
 
 (defun command-internals-symbol-p (symbol)
@@ -154,34 +150,3 @@ Perhaps hotpatch define-command to throw if one feeds it a command name with %?"
   (let* ((name (symbol-name symbol))
          (scanner (cl-ppcre:create-scanner "^COM-" :case-insensitive-mode t)))
     (and (cl-ppcre::scan scanner name) (cl-ppcre::scan #\% name))))
-
-
-;;; source location
-#|
-(swank/backend:find-source-location (find-class 'mcclim-panter-apropos::iapropos))
-(:LOCATION
- (:FILE "/home/gas/Projects/CL/my/mcclim-panter/apropos/iapropos.lisp")
- (:POSITION 186)
- (:SNIPPET "(defclass iapropos ()
-  ((apropos-text :initform nil
-		 :accessor iapropos-text)
-   (cached-apropos-scanner :initform nil)
-   (package-apropos-text :initform \"\"
-			 :accessor iapropos-package-text)
-   (external-yes/no :type '(member nil :yes :no)
-		    :in"))
-
-(swank/backend:find-source-location (symbol-function 'mcclim-panter-apropos::symbol-documentation))
-(:LOCATION
- (:FILE "/home/gas/Projects/CL/my/mcclim-panter/apropos/utility.lisp")
- (:POSITION 904)
- (:SNIPPET "(defun symbol-documentation (symbol type)
-  (let ((doc (getf (swank/backend::describe-symbol-for-emacs symbol)
-		   (case type
-		     (:class
-		      :type)
-		     (:generic-function
-		      #+sbcl :generic-function
-		      #+ccl :function)
-		     (otherwi"))
-|#
