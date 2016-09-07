@@ -19,12 +19,18 @@
   :author "Alessandro Serra"
   :license "GPLv3"
   :depends-on (:mcclim)
-  :components (
+  :components ((:file "mcclim-panter-task-manager")
 	       (:module "src"
 			:serial t
+			:depends-on ("mcclim-panter-task-manager")
 			:components
-			((:file "mcclim-panter-task-manager")
-			 (:file "commands")
+			((:file "presentations")))
+  	       (:module "gui"
+			:depends-on ("src")
+			:serial t
+			:components
+			((:file "parameters")
 			 (:file "frame")
+			 (:file "commands")
 			 (:file "main"))))
   :description "Task Manager")

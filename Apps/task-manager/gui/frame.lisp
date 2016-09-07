@@ -18,9 +18,3 @@
 		  interact))))
 
 
-(clim:define-command (com-quit :name "Quit"
-			       :command-table task-manager
-			       :menu t
-			       :provide-output-destination-keyword nil)
-    ()
-  (clim:frame-exit clim:*application-frame*))
