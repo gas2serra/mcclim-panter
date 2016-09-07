@@ -37,7 +37,7 @@
 			  :scroll-bars :vertical
 			  :end-of-line-action :allow
 			  :end-of-page-action :allow
-			  :min-width 300)
+			  :min-width 250)
    (package-result-display :application
 			  :incremental-redisplay t
 			  :display-function '%render-package-result
@@ -45,14 +45,13 @@
 			  :scroll-bars :vertical
 			  :end-of-line-action :allow
 			  :end-of-page-action :allow
-			  :min-width 300
-			  :max-width 500)
+			  :min-width 200
+			  :max-width 400)
    (output-display :application
 		   :incremental-redisplay t
 		   :display-function '%render-output
 		   :scroll-bars :vertical
-		   :end-of-page-action :allow
-		   :min-width 600)
+		   :end-of-page-action :allow)
    (result-options
     (clim:with-radio-box (:type :some-of
 			  :orientation :horizontal
@@ -103,8 +102,8 @@
 		     :value-key #'cdr
 		     :value-changed-callback #'%update-preselect-option)
    (action-option
-    (clim:with-radio-box (:orientation :vertical
-				       :value-changed-callback '%update-action-option)
+    (clim:with-radio-box (:orientation :horizontal ;;:orientation :vertical
+			  :value-changed-callback '%update-action-option)
       (clim:radio-box-current-selection "single") "multiple"))
    (return-action :push-button
 		  :activate-callback #'(lambda (gadget)
@@ -115,7 +114,7 @@
 		:activate-callback #'(lambda (gadget)
 				       (declare (ignore gadget))
 				       (com-edit-copy-to-clipboard))
-		:label "copy")
+		:label "clipboard")
    (kill-ring-action :push-button 
 		     :activate-callback #'(lambda (gadget)
 					    (declare (ignore gadget))
@@ -143,28 +142,31 @@
 	     preselect-option)
 	   (clim:labelling (:label "Selection")
 	     action-option)
-	   (clim:+fill+ (clim:labelling (:label "Actions")
-			  (clim:vertically nil
-			    return-action
-			    copy-action
-			    kill-ring-action))))
+	   (clim:+fill+
+	    ))
 	 (clim:+fill+
 	  (clim:vertically nil
 	    (2/3 (clim:labelling (:label "Results")
 		   (clim:vertically nil
 		     result-options
 		     (clim:horizontally nil
-		       (1/2 package-result-display)
-		       (1/2 symbol-result-display)))))
+		       (2/5 package-result-display)
+		       (3/5 symbol-result-display)))))
 	    (1/3 (clim:labelling (:label "Output")
 		   (clim:vertically nil
 		     output-option
 		     output-display)))
-	    (clim:vertically nil
-	      (clim:labelling (:label "symbol apropos" :align-x :center)
-		symbol-regex-text-field)
-	      (clim:labelling (:label "package apropos" :align-x :center)
-		package-regex-text-field))))))))
+	    (clim:horizontally nil
+	      (clim:labelling (:label "Copy to")
+		(clim:vertically nil
+		  copy-action
+		  kill-ring-action))
+	      (clim:+fill+
+	       (clim:vertically nil
+		 (clim:labelling (:label "symbol apropos" :align-x :center)
+		   symbol-regex-text-field)
+		 (clim:labelling (:label "package apropos" :align-x :center)
+		   package-regex-text-field))))))))))
 
 ;;;
 ;;; frame initialization
