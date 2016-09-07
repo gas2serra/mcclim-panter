@@ -486,17 +486,6 @@
 	     (remove-duplicates selected-values))))))
 
 ;;;
-;;; run
-;;;
-
-(defun run-apropos-navigator ()
-  (let ((*return-values* nil))
-    (let* ((frame (clim:make-application-frame 'apropos-navigator)))
-      (setf (clim:frame-current-layout frame) :default)
-      (clim:run-frame-top-level frame :name "apropos-navigator"))
-    *return-values*))
-
-;;;
 ;;;
 ;;;
 

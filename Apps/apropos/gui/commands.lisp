@@ -21,7 +21,7 @@
 
 (clim:define-command (com-edit-select-all :command-table edit-menu
 					  :menu t
-					  :name "Select all"
+					  :name "Select All"
 					  :keystroke (#\a :meta :control))
     ()
   (with-slots (selected-values iapropos) clim:*application-frame*
@@ -30,7 +30,7 @@
 
 (clim:define-command (com-edit-select-none :command-table edit-menu
 					   :menu t
-					   :name "Select none"
+					   :name "Select None"
 					   :keystroke (#\n :meta :control))
     ()
   (with-slots (selected-values iapropos) clim:*application-frame*
@@ -39,7 +39,7 @@
 
 (clim:define-command (com-edit-copy-to-kill-ring :command-table edit-menu
 						 :menu t
-						 :name "Copy to kill ring"
+						 :name "Copy To Kill Ring"
 						 :keystroke (#\k :meta :control))
     ()
   (setf (clim:port-keyboard-input-focus (clim:port clim:*application-frame*)) 
@@ -51,7 +51,7 @@
 
 (clim:define-command (com-edit-copy-to-clipboard :command-table edit-menu
 						 :menu t
-						 :name "Copy to clipboard"
+						 :name "Copy To Clipboard"
 						 :keystroke (#\c :meta :control))
     ()
   (%update-return-values)
@@ -77,7 +77,7 @@
 
 ;;; gesture :select
 
-(define-apropos-navigator-command (com-select-symbol :name "Select symbol")
+(define-apropos-navigator-command (com-select-symbol :name "Select Symbol")
     ((sym 'symbol :gesture :select))
   (with-slots (selected-values selected-action-option) clim:*application-frame*
     (if (eq selected-action-option :single)
@@ -91,18 +91,18 @@
   (%maybe-update-output-display))
 
 (define-apropos-navigator-command (com-select-package
-				   :name "Select package")
+				   :name "Select Package")
     ((pack 'package :gesture :select))
   (setf (clim:gadget-value
 	 (clim:find-pane-named clim:*application-frame* 'package-regex-text-field))
 	(format nil "^~A$" (package-name pack))))
 
 (define-apropos-navigator-command (com-inspect-object
-				   :name "Inspect object")
+				   :name "Inspect Object")
     ((object 'object :gesture :select))
   (clouseau:inspector object))
 
-(define-apropos-navigator-command (com-edit-definition :name "Edit definition")
+(define-apropos-navigator-command (com-edit-definition :name "Edit Definition")
     ((loc 'source-location :gesture :select))
   (climacs:edit-file (car loc))
   (unless (climacs::find-climacs-frame)

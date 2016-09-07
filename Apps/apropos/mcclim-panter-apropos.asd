@@ -19,16 +19,21 @@
   :author "Alessandro Serra"
   :license "GPLv3"
   :depends-on (:mcclim :climacs :clim-listener :cl-ppcre :anaphora :swank :closer-mop :clouseau)
-  :components (
+  :components ((:file "mcclim-panter-apropos")
 	       (:module "src"
 			:serial t
+			:depends-on ("mcclim-panter-apropos")
 			:components
-			((:file "mcclim-panter-apropos")
-			 (:file "utility")
+			((:file "utility")
 			 (:file "iapropos")
 			 (:file "iapropos-preselects")
-			 (:file "presentations")
-			 (:file "navigator-parameters")
-			 (:file "navigator-frame")
-			 (:file "navigator-commands"))))
+			 (:file "presentations")))
+	       (:module "gui"
+			:serial t
+			:depends-on ("src")
+			:components
+			((:file "parameters")
+			 (:file "frame")
+			 (:file "commands")
+			 (:file "main"))))
   :description "Apropos Navigator")
