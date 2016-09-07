@@ -13,8 +13,8 @@
   (:menu-bar t)
   (:layouts (default
 		(clim:vertically ()
-		  app
-		  doc
-		  interact))))
+		  (2/3 app)
+		  (1/3 interact)
+		  doc))))
 
 
