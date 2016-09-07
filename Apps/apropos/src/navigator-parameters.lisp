@@ -18,18 +18,24 @@
 	(cons "pane" 'clim:pane)
 	(cons "gadget" 'clim:gadget)
 	(cons "presentation" 'clim:presentation)
-	(cons "view" 'clim:view)
 	(cons "command-table" 'clim:command-table)
 	(cons "application-frame" 'clim:application-frame)))
 
 (defparameter *apropos-navigator-metaclas-of-options*
-  (list (cons "nil" nil)
-	(cons "presentation-type" 'climi::presentation-type-class)))
+  (list
+   (cons "nil" nil)))
 	
 (defparameter *apropos-navigator-preselect-options*
   (list (cons "nil" nil)
-	(cons "commands"
-	      #'command-internals-symbol-p)))
+	(cons "command"
+	      #'command-internal-preselect)
+	(cons "command-table"
+	      #'command-table-preselect)
+	(cons "presentation-type"
+	      #'presentation-type-preselect)
+	(cons "view-type"
+	      #'view-type-preselect)))
+	
 
 
 

@@ -268,7 +268,9 @@
       (progn
 	(clim:deactivate-gadget (clim:find-pane-named clim:*application-frame* 'bound-to-option))
 	(clim:deactivate-gadget (clim:find-pane-named clim:*application-frame* 'subclass-option))
-	(clim:deactivate-gadget (clim:find-pane-named clim:*application-frame* 'metaclass-option)))
+	(clim:deactivate-gadget (clim:find-pane-named clim:*application-frame* 'metaclass-option))
+	(with-slots (iapropos) clim:*application-frame*
+	  (funcall selected-value iapropos)))
       (progn
 	(setf (clim:gadget-value
 	       (clim:find-pane-named clim:*application-frame* 'bound-to-option)) "nil")
@@ -277,11 +279,11 @@
 	(setf (clim:gadget-value
 	       (clim:find-pane-named clim:*application-frame* 'metaclass-option)) nil)
 	(clim:activate-gadget (clim:find-pane-named clim:*application-frame* 'bound-to-option))
-	(clim:activate-gadget (clim:find-pane-named clim:*application-frame* 'subclass-option))
-	(clim:activate-gadget (clim:find-pane-named clim:*application-frame* 'metaclass-option))))
-  (with-slots (iapropos) clim:*application-frame*
-    ;;tofix
-    (setf (iapropos-filter-fn iapropos) selected-value))
+	(with-slots (iapropos) clim:*application-frame*
+	  (setf (iapropos-filter-fn iapropos) nil)
+	  (setf (iapropos-subclass-of iapropos) nil)
+	  (setf (iapropos-metaclass-of iapropos) nil)
+	  (setf (iapropos-bound-to iapropos) nil))))
   (%maybe-update-symbol-result-display))
 
 (defun %update-output-option (this-gadget selected-gadget)
@@ -313,11 +315,12 @@
 	(progn
 	  (setf selected-values (when selected-values (list (car selected-values))))
 	  (setf (clim:command-enabled 'com-edit-select-all clim:*application-frame*) nil)
-	  (setf (clim:command-enabled 'com-edit-select-none clim:*application-frame*) nil))
+	  (setf (clim:command-enabled 'com-edit-select-none clim:*application-frame*) nil)
+	  (%maybe-update-symbol-result-display)
+	  (%maybe-update-output-display))
 	(progn
 	  (setf (clim:command-enabled 'com-edit-select-all clim:*application-frame*) t)
-	  (setf (clim:command-enabled 'com-edit-select-none clim:*application-frame*) t))))
-  (%maybe-update-output-display))
+	  (setf (clim:command-enabled 'com-edit-select-none clim:*application-frame*) t)))))
 
 (defun %maybe-update-symbol-result-display (&rest _)
   (declare (ignore _))

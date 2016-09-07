@@ -18,7 +18,7 @@
 (defun symbol-bound-to (symbol type)
   (ccase type
     (:variable
-     (boundp symbol))
+     (and symbol (boundp symbol)))
     (:function
      (fboundp symbol))
     (:macro
