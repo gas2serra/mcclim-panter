@@ -1,5 +1,15 @@
 (in-package :mcclim-panter-apropos)
 
+
+;;;
+;;; utility
+;;;
+
+(defun string-to-keyword (str)
+  (if (string= str "nil")
+      nil
+      (intern (string-upcase str) :keyword)))
+
 ;;;
 ;;; application frame
 ;;;
@@ -55,12 +65,14 @@
       (clim:radio-box-current-selection "selection")
       "documentation" "location" "description" "object"))
    (external-option
-    (clim:with-radio-box (:orientation :horizontal :value-changed-callback '%update-external-option)
+    (clim:with-radio-box (:orientation :horizontal
+			  :value-changed-callback '%update-external-option)
       "yes"
       "no"
       (clim:radio-box-current-selection "nil")))
    (documentation-option
-    (clim:with-radio-box (:orientation :horizontal :value-changed-callback '%update-documentation-option)
+    (clim:with-radio-box (:orientation :horizontal
+			  :value-changed-callback '%update-documentation-option)
       "yes"
       "no"
       (clim:radio-box-current-selection "nil")))
@@ -84,29 +96,29 @@
 		     :name-key #'car
 		     :value-key #'cdr	
 		     :value-changed-callback #'%update-metaclass-option)
-   (filter-option :option-pane
-		  :value nil
-		  :items *apropos-navigator-filter-options*
-		  :name-key #'car
-		  :value-key #'cdr
-		  :value-changed-callback #'%update-filter-option)
+   (preselect-option :option-pane
+		     :value nil
+		     :items *apropos-navigator-preselect-options*
+		     :name-key #'car
+		     :value-key #'cdr
+		     :value-changed-callback #'%update-preselect-option)
    (action-option
     (clim:with-radio-box (:orientation :vertical
 				       :value-changed-callback '%update-action-option)
       (clim:radio-box-current-selection "single") "multiple"))
    (return-action :push-button
 		  :activate-callback #'(lambda (gadget)
-					 (declare (ingore gadget))
+					 (declare (ignore gadget))
 					 (com-quit))
 		  :label "return")
    (copy-action :push-button
 		:activate-callback #'(lambda (gadget)
-				       (declare (ingore gadget))
+				       (declare (ignore gadget))
 				       (com-edit-copy-to-clipboard))
 		:label "copy")
    (kill-ring-action :push-button 
 		     :activate-callback #'(lambda (gadget)
-					    (declare (ingore gadget))
+					    (declare (ignore gadget))
 					    (com-edit-copy-to-kill-ring))
 		     :label "kill-ring"))
   (:layouts
@@ -127,8 +139,8 @@
 		 subclass-option)
 	       (clim:labelling (:label "metaclass of")
 		 metaclass-option)))
-	   (clim:labelling (:label "Filter")
-	     filter-option)
+	   (clim:labelling (:label "Preselect")
+	     preselect-option)
 	   (clim:labelling (:label "Selection")
 	     action-option)
 	   (clim:+fill+ (clim:labelling (:label "Actions")
@@ -170,7 +182,6 @@
   (car (clim:sheet-children
 	(clim:find-pane-named clim:*application-frame* 'symbol-regex-text-field))))
 
-
 ;;;
 ;;; callbacks
 ;;;
@@ -183,13 +194,15 @@
     (handler-bind ((cl-ppcre:ppcre-syntax-error
 		    #'(lambda (condition)
 			(%print-error
-			 (clim:find-pane-named clim:*application-frame* 'output-display)
-			 condition)
-			(%maybe-update-result-display)
+			 condition
+			 (clim:find-pane-named clim:*application-frame* 'output-display))
+			(%maybe-update-package-result-display)
+			(%maybe-update-symbol-result-display)
 			(return-from %update-matching-packages))))
-      (setf (iapropos-package-text iapropos) value)
-      (%maybe-update-result-display))))
-
+      (setf (iapropos-package-text iapropos) value)))
+  (%maybe-update-package-result-display)
+  (%maybe-update-symbol-result-display))
+  
 (defun %update-matching-symbols (this-gadget value)
   (declare (ignore this-gadget))
   (anaphora:awhen (clim:find-pane-named clim:*application-frame* 'output-display)
@@ -198,19 +211,19 @@
     (handler-bind ((cl-ppcre:ppcre-syntax-error
 		    #'(lambda (condition)
 			(%print-error
-			 (clim:find-pane-named clim:*application-frame* 'output-display)
-			 condition)
-			(%maybe-update-result-display)
+			 condition
+			 (clim:find-pane-named clim:*application-frame* 'output-display))
+			(%maybe-update-package-result-display)
+			(%maybe-update-symbol-result-display)
 			(return-from %update-matching-symbols))))
-      (setf (iapropos-symbol-text iapropos) value)
-      (%maybe-update-result-display))))
+      (setf (iapropos-symbol-text iapropos) value)))
+  (%maybe-update-symbol-result-display))
 
 (defun %update-bound-to-option (this-gadget selected-gadget)
   (declare (ignore this-gadget))
   (with-slots (iapropos) clim:*application-frame*
-    (if (string= (clim:gadget-label selected-gadget) "nil")
-	(setf (iapropos-bound-to iapropos) nil)
-	(setf (iapropos-bound-to iapropos) (intern (string-upcase (clim:gadget-label selected-gadget)) :keyword))))
+    (setf (iapropos-bound-to iapropos)
+	  (string-to-keyword (clim:gadget-label selected-gadget))))
   (if (string= (clim:gadget-label selected-gadget) "class")
       (progn
 	(clim:activate-gadget (clim:find-pane-named clim:*application-frame* 'subclass-option))
@@ -221,46 +234,55 @@
   (if (string/= (clim:gadget-label selected-gadget) "nil")
       (clim:activate-gadget (clim:find-pane-named clim:*application-frame* 'documentation-option))
       (clim:deactivate-gadget (clim:find-pane-named clim:*application-frame* 'documentation-option)))
-  (%maybe-update-result-display))
+  (%maybe-update-symbol-result-display))
 
 (defun %update-external-option (this-gadget selected-gadget)
   (declare (ignore this-gadget))
   (with-slots (iapropos) clim:*application-frame*
-    (if (string= (clim:gadget-label selected-gadget) "nil")
-	(setf (iapropos-external-yes/no iapropos) nil)
-	(setf (iapropos-external-yes/no iapropos)
-	      (intern (string-upcase (clim:gadget-label selected-gadget)) :keyword))))
-  (%maybe-update-result-display))
+    (setf (iapropos-external-yes/no iapropos)
+	  (string-to-keyword (clim:gadget-label selected-gadget))))
+  (%maybe-update-symbol-result-display))
 
 (defun %update-documentation-option (this-gadget selected-gadget)
   (declare (ignore this-gadget))
   (with-slots (iapropos) clim:*application-frame*
-    (if (string= (clim:gadget-label selected-gadget) "nil")
-	(setf (iapropos-documentation-yes/no iapropos) nil)
-	(setf (iapropos-documentation-yes/no iapropos)
-	      (intern (string-upcase (clim:gadget-label selected-gadget)) :keyword))))
-  (%maybe-update-result-display))
+    (setf (iapropos-documentation-yes/no iapropos)
+	  (string-to-keyword (clim:gadget-label selected-gadget))))
+  (%maybe-update-symbol-result-display))
 
 (defun %update-subclass-option (this-gadget selected-value)
   (declare (ignore this-gadget))
   (with-slots (iapropos) clim:*application-frame*
-    (setf (iapropos-subclass-of iapropos) 
-	  selected-value))
-  (%maybe-update-result-display))
+    (setf (iapropos-subclass-of iapropos) selected-value))
+  (%maybe-update-symbol-result-display))
 
 (defun %update-metaclass-option (this-gadget selected-value)
   (declare (ignore this-gadget))
   (with-slots (iapropos) clim:*application-frame*
-    (setf (iapropos-metaclass-of iapropos) 
-	  selected-value))
-  (%maybe-update-result-display))
+    (setf (iapropos-metaclass-of iapropos) selected-value))
+  (%maybe-update-symbol-result-display))
 
-(defun %update-filter-option (this-gadget selected-value)
+(defun %update-preselect-option (this-gadget selected-value)
   (declare (ignore this-gadget))
+  (if selected-value
+      (progn
+	(clim:deactivate-gadget (clim:find-pane-named clim:*application-frame* 'bound-to-option))
+	(clim:deactivate-gadget (clim:find-pane-named clim:*application-frame* 'subclass-option))
+	(clim:deactivate-gadget (clim:find-pane-named clim:*application-frame* 'metaclass-option)))
+      (progn
+	(setf (clim:gadget-value
+	       (clim:find-pane-named clim:*application-frame* 'bound-to-option)) "nil")
+	(setf (clim:gadget-value
+	       (clim:find-pane-named clim:*application-frame* 'subclass-option)) nil)
+	(setf (clim:gadget-value
+	       (clim:find-pane-named clim:*application-frame* 'metaclass-option)) nil)
+	(clim:activate-gadget (clim:find-pane-named clim:*application-frame* 'bound-to-option))
+	(clim:activate-gadget (clim:find-pane-named clim:*application-frame* 'subclass-option))
+	(clim:activate-gadget (clim:find-pane-named clim:*application-frame* 'metaclass-option))))
   (with-slots (iapropos) clim:*application-frame*
-    (setf (iapropos-filter-fn iapropos) 
-	  selected-value))
-  (%maybe-update-result-display))
+    ;;tofix
+    (setf (iapropos-filter-fn iapropos) selected-value))
+  (%maybe-update-symbol-result-display))
 
 (defun %update-output-option (this-gadget selected-gadget)
   (declare (ignore this-gadget))
@@ -275,18 +297,18 @@
     (setf selected-result-options nil)
     (dolist (sg selected-gadgets)
       (push 
-       (intern (string-upcase (clim:gadget-label sg)) :keyword)
+       (string-to-keyword (clim:gadget-label sg))
        selected-result-options))
     (if (member :fully-qualified selected-result-options)
 	(setf symbol-view +fully-qualified-symbol-view+)
 	(setf symbol-view clim:+textual-view+)))
-  (%maybe-update-result-display))
+  (%maybe-update-symbol-result-display))
 
 (defun %update-action-option (this-gadget selected-gadget)
   (declare (ignore this-gadget))
   (with-slots (selected-action-option selected-values) clim:*application-frame*
     (setf selected-action-option 
-	  (intern (string-upcase (clim:gadget-label selected-gadget)) :keyword))
+	  (string-to-keyword (clim:gadget-label selected-gadget)))
     (if (eq selected-action-option :single)
 	(progn
 	  (setf selected-values (when selected-values (list (car selected-values))))
@@ -297,11 +319,14 @@
 	  (setf (clim:command-enabled 'com-edit-select-none clim:*application-frame*) t))))
   (%maybe-update-output-display))
 
-(defun %maybe-update-result-display (&rest _)
+(defun %maybe-update-symbol-result-display (&rest _)
+  (declare (ignore _))
+  (anaphora:awhen (clim:find-pane-named clim:*application-frame* 'symbol-result-display)
+    (clim:redisplay-frame-pane clim:*application-frame* anaphora:it :force-p t)))
+
+(defun %maybe-update-package-result-display (&rest _)
   (declare (ignore _))
   (anaphora:awhen (clim:find-pane-named clim:*application-frame* 'package-result-display)
-    (clim:redisplay-frame-pane clim:*application-frame* anaphora:it :force-p t))
-  (anaphora:awhen (clim:find-pane-named clim:*application-frame* 'symbol-result-display)
     (clim:redisplay-frame-pane clim:*application-frame* anaphora:it :force-p t)))
 
 (defun %maybe-update-output-display (&rest _)
@@ -313,21 +338,29 @@
 ;;; render functions
 ;;;
 
-(defun %print-heading-text (pane text &optional (x-offset 0))
+(defun %print-heading-text (text pane)
   (fresh-line pane)
-  (clim:stream-increment-cursor-position pane (+ x-offset 10) 5)
+  (clim:stream-increment-cursor-position pane 10 5)
   (clim:surrounding-output-with-border
-      (pane :shape :underline :ink clim:+black+)
-    (clim:with-text-style (pane *apropos-navigator-heading-text-style*)
-      (princ text pane))))
+   (pane :shape :underline :ink clim:+black+)
+   (clim:with-text-style (pane *apropos-navigator-heading-text-style*)
+     (princ text pane))))
 
-(defun %print-error (pane condition &optional (x-offset 0))
+(defun %print-sub-heading-text (text pane)
   (fresh-line pane)
-  (clim:stream-increment-cursor-position pane (+ x-offset 10) 5)
+  (clim:stream-increment-cursor-position pane 10 5)
+  (clim:surrounding-output-with-border
+   (pane :shape :underline :ink clim:+black+)
+   (clim:with-text-style (pane *apropos-navigator-sub-heading-text-style*)
+     (princ text pane))))
+
+(defun %print-error (condition pane)
+  (fresh-line pane)
+  (clim:stream-increment-cursor-position pane 10 5)
   (clim:with-drawing-options (pane :ink clim:+red+)
-    (%print-heading-text pane "Syntax Error")
+    (%print-heading-text "Syntax Error" pane)
     (fresh-line pane)
-    (clim:stream-increment-cursor-position pane (+ x-offset 10) 0)
+    (clim:stream-increment-cursor-position pane 10 0)
     (princ condition pane)))
 
 (defun %print-text (pane text &optional (x-offset 0))
@@ -340,11 +373,12 @@
 
 (defun %render-output (frame pane)
   (declare (ignore frame))
+  (declare (ignore frame))
   (with-slots (selected-values selected-output-option iapropos) clim:*application-frame*
     (flet ((print-symbol (sym type opt)
 	     (ccase opt
 	       (:selection
-		(%print-heading-text pane (format nil "Selected symbols"))
+		(%print-sub-heading-text (format nil "Selected symbols") pane)
 		(let ((*print-escape* t))
 		  (dolist (v selected-values)
 		    (fresh-line pane)
@@ -354,7 +388,7 @@
 		    (anaphora:awhen (list-symbol-bounding-types v)
 		      (princ anaphora:it pane)))))
 	       (:object
-		(%print-heading-text pane (format nil "Object (~A)" type))
+		(%print-sub-heading-text (format nil "Object (~A)" type) pane)
 		(let ((obj (symbol-object sym type)))
 		  (when obj
 		    (fresh-line pane)
@@ -362,7 +396,7 @@
 		    (clim:present obj 'object
 				  :stream pane :view clim:+textual-view+))))
 	       (:location
-		(%print-heading-text pane (format nil "Location (~A)" type))
+		(%print-sub-heading-text (format nil "Location (~A)" type) pane)
 		(let ((loc (symbol-location sym type)))
 		  (when loc
 		    (fresh-line pane)
@@ -370,27 +404,23 @@
 		    (clim:present loc 'source-location
 				  :stream pane :view clim:+textual-view+))))
 	       (:documentation
-		(%print-heading-text pane (format nil "Documentation (~A)" type))
+		(%print-sub-heading-text (format nil "Documentation (~A)" type) pane)
 		(let ((doc (symbol-documentation (car selected-values) type)))
 		  (when doc
 		    (%print-text pane doc))))
 	       (:description
-		(%print-heading-text pane (format nil "Description (~A)" type))
+		(%print-sub-heading-text (format nil "Description (~A)" type) pane)
 		(let ((des (symbol-description (car selected-values) type)))
 		  (when des
 		    (%print-text pane des)))))
-	     ;;(princ #\Newline pane)
-	     ;;(fresh-line pane)
-	     (clim:stream-increment-cursor-position pane 0 5)
-	     ))
-      ;;(setf (clim:stream-cursor-position pane) (values 10 10))     
+	     (clim:stream-increment-cursor-position pane 0 5)))
       (if (null selected-values)
-	  (%print-heading-text pane (format nil "Empty selection"))
+	  (%print-heading-text (format nil "Empty selection") pane)
 	  (if (eq selected-output-option :selection)
 	      (print-symbol selected-values nil selected-output-option)
 	      (dolist (sym selected-values)
 		(let ((*print-escape* t))
-		  (%print-heading-text pane (format nil "~S" sym)))
+		  (%print-heading-text (format nil "~S" sym) pane))
 		(if (iapropos-bound-to iapropos) 
 		    (print-symbol sym
 				  (iapropos-bound-to iapropos) selected-output-option)
@@ -398,15 +428,15 @@
 		      (print-symbol sym type selected-output-option)))))))))
 
 (defun %render-symbol-result (frame pane)
+  (declare (ignore frame))
   (with-slots (iapropos selected-values symbol-view)
       clim:*application-frame*
     (let* ((matching-symbols (iapropos-matching-symbols iapropos))
 	   (symbols-to-print (take 400 matching-symbols)))
-      (%print-heading-text pane
-			   (format nil "Symbols (~A/~A~A)"
+      (%print-heading-text (format nil "Symbols (~A/~A~A)"
 				   (length symbols-to-print)
 				   (length matching-symbols)
-				   (if (iapropos-result-overflow-p iapropos) "*" "")))
+				   (if (iapropos-result-overflow-p iapropos) "*" "")) pane)
       (if (null matching-symbols)
 	  (progn
 	    (fresh-line pane)
@@ -422,10 +452,11 @@
 	      (clim:present sym 'symbol :stream pane :view symbol-view)))))))
 
 (defun %render-package-result (frame pane)
+  (declare (ignore frame))
   (with-slots (iapropos)
       clim:*application-frame*
     (let* ((matching-packages (iapropos-matching-packages iapropos)))
-      (%print-heading-text pane (format nil "Packages (~A)" (length matching-packages)))
+      (%print-heading-text (format nil "Packages (~A)" (length matching-packages)) pane)
       (if (null matching-packages)
 	  (progn
 	    (fresh-line pane)

@@ -6,7 +6,11 @@
 
 (defparameter *apropos-navigator-heading-text-style* (clim:make-text-style
 						     nil
-						     :bold 12))
+						     :bold 13))
+
+(defparameter *apropos-navigator-sub-heading-text-style* (clim:make-text-style
+						     nil
+						     :bold 11))
 
 (defparameter *apropos-navigator-subclas-of-options*
   (list (cons "nil" nil)
@@ -22,8 +26,7 @@
   (list (cons "nil" nil)
 	(cons "presentation-type" 'climi::presentation-type-class)))
 	
-
-(defparameter *apropos-navigator-filter-options*
+(defparameter *apropos-navigator-preselect-options*
   (list (cons "nil" nil)
 	(cons "commands"
 	      #'command-internals-symbol-p)))

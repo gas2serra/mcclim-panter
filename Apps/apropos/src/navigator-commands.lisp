@@ -87,7 +87,7 @@
 	    (setf selected-values (remove-duplicates (push sym selected-values))))))
   (with-fixed-vertical-scroll-bar (clim:find-pane-named
 				   clim:*application-frame* 'symbol-result-display)
-    (%maybe-update-result-display))
+    (%maybe-update-symbol-result-display))
   (%maybe-update-output-display))
 
 (define-apropos-navigator-command (com-select-package
@@ -103,9 +103,9 @@
   (clouseau:inspector object))
 
 (define-apropos-navigator-command (com-edit-definition :name "Edit definition")
-    ((object 'source-location :gesture :select))
-  (climacs:edit-file (car object))
+    ((loc 'source-location :gesture :select))
+  (climacs:edit-file (car loc))
   (unless (climacs::find-climacs-frame)
     (sleep 1))
   (clim:execute-frame-command (climacs::find-climacs-frame)
-			      (list 'drei-commands::com-goto-position (cdr object))))
+			      (list 'drei-commands::com-goto-position (cdr loc))))

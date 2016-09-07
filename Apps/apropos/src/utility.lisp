@@ -86,10 +86,8 @@
 (defun symbol-location (symbol type)
   (let ((definitions (swank::find-definitions symbol)))
     (flet ((convert (ty)
-
 	     (let ((loc 
 		    (car (cdr (find-if #'(lambda (x) (eq ty (caar x))) definitions)))))
-	       ;;(clouseau:inspector (format nil "~A" loc))
 	       (when (eq (car loc) :location)
 		 (cons (cadr (assoc :file (cdr loc)))
 		       (cadr (assoc :position (cdr loc))))))))
@@ -150,16 +148,3 @@
       (:type
        #+sbcl (describe (sb-kernel:values-specifier-type symbol))
        #+ccl (describe (or (find-class symbol nil) symbol))))))
-
-
-;;;
-;;; 
-;;;
-
-(defun command-internals-symbol-p (symbol)
-  "XXX, If this were implemented properly, it would scan for one of the
-following strings: acceptor, partial or unparser. But since it is cheaper..
-Perhaps hotpatch define-command to throw if one feeds it a command name with %?"
-  (let* ((name (symbol-name symbol))
-         (scanner (cl-ppcre:create-scanner "^COM-" :case-insensitive-mode t)))
-    (and (cl-ppcre::scan scanner name) (cl-ppcre::scan #\% name))))

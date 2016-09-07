@@ -26,6 +26,7 @@
 			((:file "mcclim-panter-apropos")
 			 (:file "utility")
 			 (:file "iapropos")
+			 (:file "iapropos-preselects")
 			 (:file "presentations")
 			 (:file "navigator-parameters")
 			 (:file "navigator-frame")
