@@ -45,7 +45,7 @@
 			  :scroll-bars :vertical
 			  :end-of-line-action :allow
 			  :end-of-page-action :allow
-			  :min-width 200
+			  :min-width 190
 			  :max-width 400)
    (output-display :application
 		   :incremental-redisplay t
@@ -58,8 +58,7 @@
 			  :value-changed-callback '%update-result-options)
       (clim:radio-box-current-selection "fully-qualified")))
    (output-option
-    (clim:with-radio-box (;;:type :some-of
-			  :orientation :horizontal
+    (clim:with-radio-box (:orientation :horizontal
 			  :value-changed-callback '%update-output-option)
       (clim:radio-box-current-selection "selection")
       "documentation" "location" "description" "object"))
@@ -102,7 +101,7 @@
 		     :value-key #'cdr
 		     :value-changed-callback #'%update-preselect-option)
    (action-option
-    (clim:with-radio-box (:orientation :horizontal ;;:orientation :vertical
+    (clim:with-radio-box (:orientation :horizontal
 			  :value-changed-callback '%update-action-option)
       (clim:radio-box-current-selection "single") "multiple"))
    (return-action :push-button
@@ -142,8 +141,7 @@
 	     preselect-option)
 	   (clim:labelling (:label "Selection")
 	     action-option)
-	   (clim:+fill+
-	    ))
+	   (clim:+fill+))
 	 (clim:+fill+
 	  (clim:vertically nil
 	    (2/3 (clim:labelling (:label "Results")

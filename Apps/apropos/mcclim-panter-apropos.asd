@@ -18,7 +18,7 @@
   :version "0.1"
   :author "Alessandro Serra"
   :license "GPLv3"
-  :depends-on (:mcclim :climacs :clim-listener :cl-ppcre :anaphora :swank :closer-mop)
+  :depends-on (:mcclim :climacs :clim-listener :cl-ppcre :anaphora :swank :closer-mop :clouseau)
   :components (
 	       (:module "src"
 			:serial t
