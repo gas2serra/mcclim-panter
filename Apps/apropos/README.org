@@ -1,29 +1,26 @@
 * Apropos Navigator (mcclim-panter)
 
+An interactive apropos application.
+This project started from the wanderful code of @gabriel-laddel ([[https://github.com/robert-strandh/McCLIM/wiki/Navigator][link]]).
+
 ** Usage
 
 *** CL
 
 #+BEGIN_SRC lisp
-
 (panter:run-apropos-navigator)
-
 #+END_SRC
 
 *** listener
 
 #+BEGIN_SRC
-
 ,Run Apropos Navigator
-
 #+END_SRC
 
 *** Drei/Climacs (lisp files)
 
 #+BEGIN_SRC lisp
-
 (#\s :meta :control)
-
 #+END_SRC
 
 ** Tested
@@ -36,6 +33,7 @@
 - sbcl 16.1.2
 - ccl 1.11
       
+
 ** Author
 
 + Alessandro Serra (gas2serra@gmail.com)
