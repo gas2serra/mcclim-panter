@@ -12,7 +12,7 @@
   (:export
    :run-apropos-navigator
    :run-task-manager
-   :debugger
+   :*panter-debugger-hook*
    ))
 
 (in-package :mcclim-panter)

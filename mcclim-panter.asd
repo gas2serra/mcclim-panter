@@ -28,6 +28,7 @@
 			:serial t
 			:components
 			((:file "mcclim-panter")
+			 (:file "debugger")
 			 (:file "drei-extension")
 			 (:file "listener-extension"))))
   :description "McClim Developer Suite")
