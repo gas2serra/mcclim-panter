@@ -10,15 +10,22 @@
     ()
   (clim:frame-exit clim:*application-frame*))
 
-;;; gesture :select
-(define-task-manager-command (com-thread-break :name "Thread Break")
-    ((thread 'thread :gesture :select))
-  (bt:interrupt-thread thread #'(lambda () (break))))
+;;; gesture :select and :help
 
 (define-task-manager-command (com-application-frame-inspect
 			      :name "Inspect Application Frame")
     ((frame 'clim:application-frame :gesture :select))
   (clouseau:inspector frame))
+
+(define-task-manager-command (com-application-frame-break
+			      :name "Break Application Frame")
+    ((frame 'clim:application-frame :gesture :help))
+  (dolist (thread (clim-sys:all-processes))
+    (bt:interrupt-thread thread
+			 #'(lambda ()
+			     (when (and (boundp 'clim:*application-frame*)
+					(eq clim:*application-frame* frame))
+			       (break))))))
 
 ;;;
 ;;; command tables
@@ -49,21 +56,9 @@
        (fresh-line)
        (clim:present frame 'clim:application-frame :view clim:+textual-view+))))
 
-(clim:define-command (com-list-threads :name "List Threads"
-				       :command-table task-manager-commands
-				       :menu t)
-    ()
-  (fresh-line)
-  (princ "*list threads*")
-  (dolist (p (clim-sys:all-processes))
-    (fresh-line)
-    (clim:present p 'thread :view clim:+textual-view+)))
-
 (clim:define-command (com-clear-output-history :name "Clear Output History"
 					       :command-table task-manager-commands
 					       :menu t)
     ()
   (clim:window-clear *standard-output*))
 
-
-  

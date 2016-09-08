@@ -5,13 +5,10 @@
 	    (view clim:textual-view)
 	    &key acceptably for-context-type)
   (declare (ignore acceptably for-context-type))
-  (prin1 object stream))
-
-(clim:define-presentation-type thread ())
-
-(clim:define-presentation-method clim:present
-    (object (type thread) stream
-	    (view clim:textual-view)
-	    &key acceptably for-context-type)
-  (declare (ignore acceptably for-context-type))
-  (prin1 object stream))
+  (format stream "~A (~A) [~A]"
+	  (clim:frame-pretty-name object)
+	  (clim:frame-name object)
+	  (clim:transform-region (clim:sheet-transformation
+				  (clim:frame-top-level-sheet object))
+				 (clim:sheet-region
+				  (clim:frame-top-level-sheet object)))))
