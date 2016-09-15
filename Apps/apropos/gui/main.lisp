@@ -26,9 +26,11 @@
 					     :frame-manager fm
 					     :width width
 					     :height height)))
-    (flet ((run () 
-	     (unwind-protect (clim:run-frame-top-level frame)
-	       (clim:disown-frame fm frame))))
+    (flet ((run ()
+	     (let ((*return-values* nil))	     
+	       (unwind-protect (clim:run-frame-top-level frame)
+		 (clim:disown-frame fm frame))
+	       *return-values*)))
       (if new-process
           (values (clim-sys:make-process #'run :name process-name)
                   frame)
