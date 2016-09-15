@@ -30,7 +30,8 @@
 (define-task-manager-command (com-application-frame-exit
 			      :name "Exit Application Frame")
     ((frame 'clim:application-frame :gesture :help))
-  (clim:frame-exit frame))
+  (clim:frame-exit frame)
+  (com-refresh))
 
 
 (define-task-manager-command (com-application-frame-inspect
@@ -55,3 +56,10 @@
   (bt:interrupt-thread thread
 		       #'(lambda ()
 			     (break))))
+
+(define-task-manager-command (com-thread-destroy
+			      :name "Destroy Thread")
+    ((thread 'thread :gesture :help))
+  (bt:destroy-thread thread)
+  (com-refresh))
+		  
