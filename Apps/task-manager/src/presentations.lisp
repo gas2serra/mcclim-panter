@@ -12,3 +12,14 @@
 				  (clim:frame-top-level-sheet object))
 				 (clim:sheet-region
 				  (clim:frame-top-level-sheet object)))))
+
+(clim:define-presentation-type thread ())
+
+(clim:define-presentation-method clim:present
+    (object (type thread) stream
+	    (view clim:textual-view)
+	    &key acceptably for-context-type)
+  (declare (ignore acceptably for-context-type))
+  (format stream "~A"
+	  (bt:thread-name object)))
+

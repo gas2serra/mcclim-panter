@@ -5,10 +5,25 @@
 ;;;
 
 (define-task-manager-command (com-quit :name "Quit"
-					    :menu t
-					    :provide-output-destination-keyword nil)
+				       :menu t
+				       :keystroke (#\q :meta))
     ()
   (clim:frame-exit clim:*application-frame*))
+
+
+(define-task-manager-command (com-refresh  :menu t
+					   :name "Refresh"
+					   :keystroke (#\r :meta))
+    ()
+  (clim:redisplay-frame-pane clim:*application-frame*
+			     (clim:find-pane-named clim:*application-frame*
+						   'frame-display)
+			     :force-p t)
+  (clim:redisplay-frame-pane clim:*application-frame*
+			     (clim:find-pane-named clim:*application-frame*
+						   'thread-display)
+			     :force-p t))
+  
 
 ;;; gesture :select and :help
 
@@ -27,38 +42,10 @@
 					(eq clim:*application-frame* frame))
 			       (break))))))
 
-;;;
-;;; command tables
-;;;
 
-(clim:define-command-table task-manager-commands)
-
-;;;
-;;; commands
-;;;
-
-(clim:define-command (com-repl :name "Launch Listener"
-			       :command-table task-manager-commands
-			       :menu t
-			       :provide-output-destination-keyword nil)
-    ()
-  (clim-listener:run-listener :new-process t))
-
-
-(clim:define-command (com-list-application-frames :name "List Application Frames"
-						  :command-table task-manager-commands
-						  :menu t)
-    ()
-  (fresh-line)
-  (princ "*list application frames*")
-  (clim:map-over-frames
-   #'(lambda (frame)
-       (fresh-line)
-       (clim:present frame 'clim:application-frame :view clim:+textual-view+))))
-
-(clim:define-command (com-clear-output-history :name "Clear Output History"
-					       :command-table task-manager-commands
-					       :menu t)
-    ()
-  (clim:window-clear *standard-output*))
-
+(define-task-manager-command (com-thread-break
+			      :name "Break Thread")
+    ((thread 'thread :gesture :help))
+  (bt:interrupt-thread thread
+		       #'(lambda ()
+			     (break))))
