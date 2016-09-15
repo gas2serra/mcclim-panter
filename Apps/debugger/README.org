@@ -7,14 +7,4 @@ from the wanderful code of @gabriel-laddel ([[https://github.com/robert-strandh/
 
 ** Installation
 
-** Author
 
-+ Alessandro Serra (gas2serra@gmail.com)
-
-** Copyright
-
-Copyright (c) 2016 Alessandro Serra (gas2serra@gmail.com)
-
-** License
-
-Licensed under the GPLv3 License.
