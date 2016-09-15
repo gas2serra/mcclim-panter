@@ -12,9 +12,7 @@
    (doc :pointer-documentation) 
    (interact :interactor))
   (:command-table
-   (task-manager
-    :inherit-from (task-manager-commands)
-    :menu (("Tasks" :menu task-manager-commands))))
+   (task-manager))
   (:menu-bar t)
   (:layouts (default
 		(clim:vertically ()

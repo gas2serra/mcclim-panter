@@ -27,6 +27,12 @@
 
 ;;; gesture :select and :help
 
+(define-task-manager-command (com-application-frame-exit
+			      :name "Exit Application Frame")
+    ((frame 'clim:application-frame :gesture :help))
+  (clim:frame-exit frame))
+
+
 (define-task-manager-command (com-application-frame-inspect
 			      :name "Inspect Application Frame")
     ((frame 'clim:application-frame :gesture :select))
