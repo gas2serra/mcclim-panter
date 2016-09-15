@@ -5,7 +5,7 @@
 
 (defvar *panter-debugger-hook* #'(lambda (condition me-or-my-encapsulation)
 				   (funcall *debugger* condition me-or-my-encapsulation)))
-
+#|
 (clim-listener::define-listener-command (com-run-apropos-navigator :name t)
     nil
   (run-apropos-navigator))
@@ -22,3 +22,4 @@
                 (eq 'swank:swank-debugger-hook *debugger*))
             (progn (format t "Enabled panter debugger~%") #'debugger)
             (progn (format t "Enabled swank debugger~%") #'swank::swank-debugger-hook))))
+|#
