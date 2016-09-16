@@ -14,19 +14,31 @@
   (:use :cl :asdf))
 (in-package #:mcclim-panter-asd)
 
+(defsystem #:mcclim-panter-internals
+    :components ((:file "packages")))
+
 (defsystem #:mcclim-panter
-  :version "0.1"
+  :version "0.2"
   :author "Alessandro Serra"
   :license "GPLv3"
-  :depends-on (:clim-listener
-	       :drei-mcclim
-	       :climacs
-	       :mcclim-panter-apropos
-	       :mcclim-panter-debugger
-	       :mcclim-panter-task-manager)
+  :depends-on (:mcclim-panter-internals
+	       :mcclim-panter-sys
+	       :mcclim-panter-core)
+  :serial t
+  :components ((:file "initialize"))
+
+	       
+	       ;;:clim-listener
+	       ;;:drei-mcclim
+	       ;;:climacs
+	       ;;:mcclim-panter-apropos
+	       ;;:mcclim-panter-debugger
+	       ;;:mcclim-panter-task-manager)
+  #|
   :components ((:module "src"
 			:serial t
 			:components
 			((:file "mcclim-panter")
 			 )))
+|#
   :description "McClim Developer Suite")
