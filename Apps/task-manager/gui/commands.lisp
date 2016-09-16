@@ -33,6 +33,11 @@
   (clim:frame-exit frame)
   (com-refresh))
 
+(define-task-manager-command (com-application-frame-raise
+			      :name "Raise Application Frame")
+    ((frame 'clim:application-frame :gesture :help))
+  (clim:raise-frame frame))
+
 
 (define-task-manager-command (com-application-frame-inspect
 			      :name "Inspect Application Frame")

@@ -5,13 +5,15 @@
 	    (view clim:textual-view)
 	    &key acceptably for-context-type)
   (declare (ignore acceptably for-context-type))
-  (format stream "~A (~A) [~A]"
+  (format stream "~A (~A) [~{~A,~A ~Ax~A~}]"
 	  (clim:frame-pretty-name object)
 	  (clim:frame-name object)
-	  (clim:transform-region (clim:sheet-transformation
-				  (clim:frame-top-level-sheet object))
-				 (clim:sheet-region
-				  (clim:frame-top-level-sheet object)))))
+	  (clim:with-bounding-rectangle* (x1 y1 x2 y2)  
+	      (clim:transform-region (clim:sheet-transformation
+				      (clim:frame-top-level-sheet object))
+				     (clim:sheet-region
+				      (clim:frame-top-level-sheet object)))
+	    (list x1 y1 (- x2 x1) (- y2 y1)))))
 
 (clim:define-presentation-type thread ())
 
