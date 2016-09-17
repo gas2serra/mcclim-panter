@@ -1,7 +1,7 @@
 (in-package :cl-user)
 
 (defpackage mcclim-panter-debugger 
-  (:use :cl)
+  (:use :cl :panter-apps)
   (:import-from :clim
 		)
   (:export

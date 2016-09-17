@@ -16,9 +16,10 @@
   :version "0.2"
   :author "Alessandro Serra"
   :license "GPLv3"
-  :depends-on (:asdf)
+  :depends-on (:asdf :mcclim)
   :components ((:module "src"
 			:serial t
 			:components
-			((:file "clipboard"))))
+			((:file "clipboard")
+			 (:file "kill-ring"))))
   :description "McClim Developer Suite")

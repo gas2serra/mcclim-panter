@@ -21,6 +21,6 @@
 	       :mcclim-panter-debugger
 	       :mcclim-panter-task-manager)
   :serial t
-  :components ((:file "packages")
+  :components (
 	       (:file "initialize"))
   :description "")

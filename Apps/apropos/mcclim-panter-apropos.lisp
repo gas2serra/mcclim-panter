@@ -1,7 +1,7 @@
 (in-package :cl-user)
 
 (defpackage mcclim-panter-apropos 
-  (:use :cl)
+  (:use :cl :panter-apps)
   (:import-from :clim
 		)
   (:export

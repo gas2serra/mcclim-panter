@@ -26,19 +26,4 @@
 	       :mcclim-panter-core)
   :serial t
   :components ((:file "initialize"))
-
-	       
-	       ;;:clim-listener
-	       ;;:drei-mcclim
-	       ;;:climacs
-	       ;;:mcclim-panter-apropos
-	       ;;:mcclim-panter-debugger
-	       ;;:mcclim-panter-task-manager)
-  #|
-  :components ((:module "src"
-			:serial t
-			:components
-			((:file "mcclim-panter")
-			 )))
-|#
   :description "McClim Developer Suite")

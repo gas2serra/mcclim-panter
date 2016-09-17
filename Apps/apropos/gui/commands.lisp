@@ -46,8 +46,7 @@
 	(car (clim:sheet-children
 	      (clim:find-pane-named clim:*application-frame* 'symbol-regex-text-field))))
   (%update-return-values)
-  (drei-kill-ring:kill-ring-standard-push drei-kill-ring:*kill-ring*
-					  (format nil "~A" *return-values*)))
+  (panter-sys:copy-to-kill-ring (format nil "~A" *return-values*)))
 
 (clim:define-command (com-edit-copy-to-clipboard :command-table edit-menu
 						 :menu t
@@ -55,8 +54,8 @@
 						 :keystroke (#\c :meta :control))
     ()
   (%update-return-values)
-  (with-input-from-string (input-stream (format nil "~S" *return-values*))
-    (uiop:run-program "xclip -selection clipboard -i " :output nil :input input-stream)))
+  (panter-sys:copy-to-x11-clipboard (format nil "~S" *return-values*)))
+  
 
 ;;; keystroke
 
