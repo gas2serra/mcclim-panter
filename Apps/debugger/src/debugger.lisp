@@ -125,10 +125,11 @@ TODO
   (clim:run-frame-top-level
    (clim:make-application-frame 'clim-debugger)))
 
-;;(clim:define-presentation-type stack-frame () :inherit-from 't)
-(clim:define-presentation-type restart     ())
-(clim:define-presentation-type more-type   ())
-(clim:define-presentation-type inspect     ())
+(eval-when (:compile-toplevel)
+  (clim:define-presentation-type stack-frame () :inherit-from 't)
+  (clim:define-presentation-type restart     ())
+  (clim:define-presentation-type more-type   ())
+  (clim:define-presentation-type inspect     ()))
 
 (define-clim-debugger-command (com-more :name "More backtraces")
     ((pane 'more-type))
