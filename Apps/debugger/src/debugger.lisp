@@ -125,11 +125,10 @@ TODO
   (clim:run-frame-top-level
    (clim:make-application-frame 'clim-debugger)))
 
-(eval-when (:compile-toplevel)
-  (clim:define-presentation-type stack-frame () :inherit-from 't)
-  (clim:define-presentation-type restart     ())
-  (clim:define-presentation-type more-type   ())
-  (clim:define-presentation-type inspect     ()))
+(clim:define-presentation-type pr-stack-frame () :inherit-from 'stack-frame)
+(clim:define-presentation-type restart     ())
+(clim:define-presentation-type more-type   ())
+(clim:define-presentation-type inspect     ())
 
 (define-clim-debugger-command (com-more :name "More backtraces")
     ((pane 'more-type))
@@ -170,7 +169,7 @@ TODO
   (list object))
 
 (clim:define-presentation-to-command-translator toggle-stack-frame-view
-    (stack-frame com-toggle-stack-frame-view clim-debugger :gesture :select)
+    (pr-stack-frame com-toggle-stack-frame-view clim-debugger :gesture :select)
     (object)
   (list object))
 
@@ -235,7 +234,7 @@ TODO
 	    (clim:with-output-as-presentation (pane stack-frame 'stack-frame)
 	      (bold (pane) (clim:formatting-cell (pane) (format t "~A: " i)))
 	      (clim:formatting-cell (pane)
-		(clim:present stack-frame 'stack-frame 
+		(clim:present stack-frame 'pr-stack-frame 
 			 :view (view stack-frame))))))
     (when (>= (length (backtrace (condition-info pane))) 20)
       (clim:formatting-row (pane)
@@ -244,7 +243,7 @@ TODO
           (bold (pane)
             (clim:present pane 'more-type)))))))
 
-(clim:define-presentation-method clim:present (object (type stack-frame) stream
+(clim:define-presentation-method clim:present (object (type pr-stack-frame) stream
 					    (view minimized-stack-frame-view)
 					    &key acceptably for-context-type)
   (declare (ignore acceptably for-context-type))
@@ -254,7 +253,7 @@ TODO
 		(subseq str 0 300)
 		str))))
 
-(clim:define-presentation-method clim:present (object (type stack-frame) stream
+(clim:define-presentation-method clim:present (object (type pr-stack-frame) stream
                      (view maximized-stack-frame-view)
                      &key acceptably for-context-type)
   (declare (ignore acceptably for-context-type))
