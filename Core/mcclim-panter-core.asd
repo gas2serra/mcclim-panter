@@ -20,6 +20,5 @@
   :components ((:module "src"
 			:serial t
 			:components
-			((:file "debugger")
-			 (:file "initialize"))))
+			()))
   :description "McClim Developer Suite")

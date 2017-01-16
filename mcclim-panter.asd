@@ -23,7 +23,8 @@
   :license "GPLv3"
   :depends-on (:mcclim-panter-internals
 	       :mcclim-panter-sys
-	       :mcclim-panter-core)
+	       :mcclim-panter-core
+	       )
   :serial t
-  :components ((:file "initialize"))
+  :components ()
   :description "McClim Developer Suite")
